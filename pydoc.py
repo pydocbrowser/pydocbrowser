@@ -3,6 +3,7 @@ import json
 import shutil
 import tarfile
 import tempfile
+import zipfile
 from pathlib import Path
 from typing import Dict, List
 
@@ -86,13 +87,27 @@ if __name__ == '__main__':
                 with open(archive_path, 'wb') as f:
                     shutil.copyfileobj(r.raw, f)
 
-            tf = tarfile.open(archive_path)
-            for member in tf.getmembers():
-                if '/' in member.name:
-                    member.name = member.name.split('/', maxsplit=1)[1]
-                else:
-                    member.name = '.'
-            tf.extractall(sources / sourceid)
+            if filename.endswith('.tar.gz'):
+                tf = tarfile.open(archive_path)
+                for member in tf.getmembers():
+                    # TODO: check that path is secure (doesn't start with /, doesn't contain ..)
+                    if '/' in member.name:
+                        member.name = member.name.split('/', maxsplit=1)[1]
+                    else:
+                        member.name = '.'
+                tf.extractall(sources / sourceid)
+            elif filename.endswith('.zip'):
+                with zipfile.ZipFile(archive_path) as zf:
+                    for info in zf.infolist():
+                        # TODO: check that path is secure (doesn't start with /, doesn't contain ..)
+                        if '/' in info.filename.rstrip('/'):
+                            info.filename = info.filename.split('/', maxsplit=1)[1]
+                        else:
+                            info.filename = './'
+                        zf.extract(info, sources / sourceid)
+            else:
+                print('[error] unknown source dist archive format', filename)
+
             versions[package_name] = version
 
     with open('versions.json', 'w') as f:
