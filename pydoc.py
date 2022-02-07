@@ -9,6 +9,7 @@ from typing import Dict, List
 import pkg_resources
 import pydoctor.driver
 import requests
+import toml
 
 # TODO: set USER_AGENT
 
@@ -99,6 +100,9 @@ if __name__ == '__main__':
 
     shutil.rmtree(download_dir)
 
+    with open('overrides.toml') as f:
+        overrides = toml.load(f)
+
     # 2. generate docs with pydoctor
 
     dist = Path('dist')
@@ -127,12 +131,15 @@ if __name__ == '__main__':
                 f"[warning] found multiple packages for {package_name} ({packages}), we're just using the first one"
             )
 
+        docformat = overrides['docformat'].get(package_name, 'restructuredtext')
+
         out_dir.mkdir(parents=True)
         pydoctor.driver.main(
             # fmt: off
             [
                 str(packages[0]),
                 '--html-output', out_dir,
+                '--docformat', docformat,
             ]
             # fmt: on
         )
