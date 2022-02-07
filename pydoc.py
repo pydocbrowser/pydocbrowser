@@ -126,12 +126,6 @@ if __name__ == '__main__':
     for path in sources.iterdir():
         sourceid = path.name
         package_name, version = sourceid.rsplit('-', maxsplit=1)
-        out_dir = dist / package_name / version
-
-        if out_dir.exists():
-            continue
-
-        print('generating', sourceid)
 
         packages = list(find_packages(sources / sourceid, package_name))
 
@@ -147,6 +141,13 @@ if __name__ == '__main__':
             )
 
         docformat = overrides['docformat'].get(package_name, 'restructuredtext')
+
+        out_dir = dist / package_name / version
+
+        if out_dir.exists():
+            continue
+
+        print('generating', sourceid)
 
         out_dir.mkdir(parents=True)
         pydoctor.driver.main(
