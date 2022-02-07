@@ -1,0 +1,7 @@
+beautifulsoup4
+flask
+httpx
+lxml
+pydoctor
+requests
+setuptools
