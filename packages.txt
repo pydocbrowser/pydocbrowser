@@ -1,7 +1,13 @@
 beautifulsoup4
+click
 flask
 httpx
+jinja2
 lxml
+mako
 pydoctor
+pygments
 requests
 setuptools
+sphinx
+werkzeug
