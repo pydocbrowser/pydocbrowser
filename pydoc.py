@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import configparser
 import json
 import shutil
 import tarfile
@@ -21,6 +22,25 @@ def fetch_package_info(package_name: str):
 
 def find_packages(path: Path, package_name: str) -> List[Path]:
     package_name = package_name.lower()
+
+    # we don't want to execute setup.py, so we firstly check setup.cfg
+
+    setup_cfg = path / 'setup.cfg'
+    if setup_cfg.exists():
+        parser = configparser.ConfigParser()
+        parser.read(setup_cfg)
+        package_dir = parser.get('options', 'package_dir', fallback=None)
+        if package_dir is not None:
+            package_dir = package_dir.strip()
+            if package_dir.startswith('='):
+                package_dir = package_dir.lstrip('= ')
+                # TODO: ensure path is safe
+                if (path / package_dir / package_name / '__init__.py').exists():
+                    return [path / package_dir / package_name]
+            else:
+                print("[warning] options.package_dir in setup.cfg doesn't start with =")
+
+    # we couldn't find the package via setup.cfg so we fallback to educated guesses
 
     if (path / package_name / '__init__.py').exists():
         return [path / package_name]
