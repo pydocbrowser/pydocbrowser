@@ -1,3 +1,4 @@
+*.pyc
 versions.json
 sources/
 dist/
