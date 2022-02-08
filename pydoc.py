@@ -238,8 +238,12 @@ if __name__ == '__main__':
                 with inventory_path.open('wb') as f:
                     f.write(inventory_bytes)
 
-            system = SphinxAwareSystem(inventory)
-            system.options.docformat = docformat
+            if 'py:module' in inventory:
+                system = SphinxAwareSystem(inventory)
+                system.options.docformat = docformat
+            else:
+                print(f"[warning] sphinx inventory for {package_name} does not contain py:module, we're ignoring the inventory")
+
 
         pydoctor.driver.main(
             # fmt: off
