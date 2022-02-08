@@ -21,10 +21,12 @@ sphinx_inventory_url = "https://flask.palletsprojects.com/en/2.0.x/objects.inv"
 [httpx]
 
 [jinja2]
+sphinx_inventory_url = "https://jinja.palletsprojects.com/en/3.0.x/objects.inv"
 
 [lxml]
 
 [mako]
+sphinx_inventory_url = "https://docs.makotemplates.org/en/latest/objects.inv"
 
 [markdown]
 

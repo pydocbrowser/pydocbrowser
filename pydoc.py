@@ -70,7 +70,7 @@ def find_packages(path: Path, package_name: str) -> List[Path]:
 
 def is_documented_in_inventory(ob: model.Documentable, inventory: Inventory) -> bool:
     if isinstance(ob, model.Module):
-        return ob.fullName() in inventory['py:module']
+        return ob.fullName() in inventory.get('py:module', ())
     if isinstance(ob, model.Class):
         return (
             ob.fullName() in inventory['py:class']
@@ -110,7 +110,7 @@ class SphinxAwareSystem(model.System):
     def __init__(self, inventory: Inventory) -> None:
         super().__init__()
         self._inventory = inventory
-        self._public_modules = set(inventory['py:module'])
+        self._public_modules = set(inventory.get('py:module', ()))
         for x in inventory_members(inventory):
             self._public_modules.add(x.rsplit('.', maxsplit=1)[0])
 
@@ -146,7 +146,8 @@ def system_for_sphinx_inventory(inventory_url: str):
         with inventory_path.open('wb') as f:
             f.write(inventory_bytes)
 
-    if 'py:module' not in inventory:
+    if 'py:class' not in inventory:
+        # we intionally don't require py:module because some projects don't use it (e.g. mako)
         raise InventoryLookupError(f"sphinx inventory does not contain py:module")
 
     system = SphinxAwareSystem(inventory)
