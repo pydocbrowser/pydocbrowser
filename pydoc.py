@@ -90,13 +90,34 @@ def is_documented_in_inventory(ob: model.Documentable, inventory: Inventory) -> 
     # TODO: it's not ideal that we default to True, ideally we could cover all kinds
     return True
 
+def inventory_members(inventory: Inventory):
+    for x in inventory['py:class']:
+        yield x
+    for x in inventory['py:exception']:
+        yield x
+    for x in inventory['py:function']:
+        yield x
+    for x in inventory['py:method']:
+        yield x
+    for x in inventory['py:attribute']:
+        yield x
+    for x in inventory['py:property']:
+        yield x
+
 
 class SphinxAwareSystem(model.System):
     def __init__(self, inventory: Inventory) -> None:
         super().__init__()
         self._inventory = inventory
+        self._public_modules = set(inventory['py:module'])
+        for x in inventory_members(inventory):
+            self._public_modules.add(x.rsplit('.', maxsplit=1)[0])
 
     def privacyClass(self, ob: model.Documentable):
+        if isinstance(ob, model.Module):
+            if ob.fullName() in self._public_modules:
+                return model.PrivacyClass.VISIBLE
+
         if not is_documented_in_inventory(ob, self._inventory):
             # TODO: if ob is return type by another public API member consider it public
             return model.PrivacyClass.PRIVATE

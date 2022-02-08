@@ -8,6 +8,7 @@ sphinx_inventory_url = "https://www.crummy.com/software/BeautifulSoup/bs4/doc/ob
 sphinx_inventory_url = "https://bottlepy.org/docs/stable/objects.inv"
 
 [click]
+sphinx_inventory_url = "https://click.palletsprojects.com/en/8.0.x/objects.inv"
 
 [django]
 
