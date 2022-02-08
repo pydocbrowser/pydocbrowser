@@ -125,6 +125,8 @@ class SphinxAwareSystem(model.System):
 
         return super().privacyClass(ob)
 
+class InventoryLookupError(Exception):
+    pass
 
 def system_for_sphinx_inventory(inventory_url: str):
     inventory_url = packages[package_name]['sphinx_inventory_url']
@@ -134,7 +136,10 @@ def system_for_sphinx_inventory(inventory_url: str):
         with inventory_path.open('rb') as f:
             inventory = InventoryFile.load(f, url_base, posixpath.join)
     except FileNotFoundError:
-        inventory_bytes = requests.get(inventory_url, stream=True).content
+        resp = requests.get(inventory_url, stream=True)
+        if resp.status_code != 200:
+            raise InventoryLookupError(f'sphinx_inventory_url returned unexpected http status code {resp.status_code}')
+        inventory_bytes = resp.content
         inventory = InventoryFile.load(
             io.BytesIO(inventory_bytes), url_base, posixpath.join
         )
@@ -142,11 +147,7 @@ def system_for_sphinx_inventory(inventory_url: str):
             f.write(inventory_bytes)
 
     if 'py:module' not in inventory:
-        print(
-            f"[warning] sphinx inventory for {package_name} does not contain py:module, we're ignoring the inventory"
-        )
-        # TODO: display warning in HTML
-        return None
+        raise InventoryLookupError(f"sphinx inventory does not contain py:module")
 
     system = SphinxAwareSystem(inventory)
     system.options.docformat = docformat
@@ -269,13 +270,18 @@ if __name__ == '__main__':
 
         print('generating', sourceid)
 
-        out_dir.mkdir(parents=True)
         system = None
 
         if 'sphinx_inventory_url' in packages[package_name]:
-            system = system_for_sphinx_inventory(
-                packages[package_name]['sphinx_inventory_url']
-            )
+            try:
+                system = system_for_sphinx_inventory(
+                    packages[package_name]['sphinx_inventory_url']
+                )
+            except InventoryLookupError as e:
+                print(f'[warning] skipping {package_name} because sphinx inventory lookup failed: {e}')
+                continue
+
+        out_dir.mkdir(parents=True)
 
         pydoctor.driver.main(
             # fmt: off
@@ -290,6 +296,9 @@ if __name__ == '__main__':
 
     # 3. create latest symlinks
     for package_name, version in versions.items():
+        if not (dist / package_name).exists():
+            continue
+
         latest = dist / package_name / 'latest'
         latest.unlink(missing_ok=True)
         latest.symlink_to(version)
