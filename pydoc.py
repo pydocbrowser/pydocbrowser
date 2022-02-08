@@ -74,7 +74,7 @@ def is_documented_in_inventory(ob: model.Documentable, inventory: Inventory) -> 
     if isinstance(ob, model.Class):
         return (
             ob.fullName() in inventory['py:class']
-            or ob.fullName() in inventory['py:exception']
+            or ob.fullName() in inventory.get('py:exception', ())
         )
     if ob.kind == model.DocumentableKind.FUNCTION:
         return ob.fullName() in inventory['py:function']
@@ -94,7 +94,7 @@ def is_documented_in_inventory(ob: model.Documentable, inventory: Inventory) -> 
 def inventory_members(inventory: Inventory):
     for x in inventory['py:class']:
         yield x
-    for x in inventory['py:exception']:
+    for x in inventory.get('py:exception', ()):
         yield x
     for x in inventory['py:function']:
         yield x
@@ -102,7 +102,7 @@ def inventory_members(inventory: Inventory):
         yield x
     for x in inventory['py:attribute']:
         yield x
-    for x in inventory['py:property']:
+    for x in inventory.get('py:property', ()):
         yield x
 
 
