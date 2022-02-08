@@ -15,6 +15,7 @@ numpy
 pydoctor
 pygments
 requests
+scrapy
 setuptools
 sphinx
 sqlalchemy
