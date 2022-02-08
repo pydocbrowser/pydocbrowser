@@ -1,17 +1,22 @@
 #!/usr/bin/env python3
 import configparser
+import io
 import json
 import shutil
 import tarfile
 import tempfile
 import zipfile
 from pathlib import Path
+import posixpath
 from typing import Dict, List
 
 import jinja2
 import mistletoe
 import pkg_resources
 import pydoctor.driver
+from pydoctor import model
+from sphinx.util.typing import Inventory
+from sphinx.util.inventory import InventoryFile
 import requests
 import toml
 
@@ -61,6 +66,41 @@ def find_packages(path: Path, package_name: str) -> List[Path]:
             if (subpath / '__init__.py').exists():
                 packages.append(subpath)
     return packages
+
+
+def is_documented_in_inventory(ob: model.Documentable, inventory: Inventory) -> bool:
+    if isinstance(ob, model.Module):
+        return ob.fullName() in inventory['py:module']
+    if isinstance(ob, model.Class):
+        return (
+            ob.fullName() in inventory['py:class']
+            or ob.fullName() in inventory['py:exception']
+        )
+    if ob.kind == model.DocumentableKind.FUNCTION:
+        return ob.fullName() in inventory['py:function']
+    if ob.kind == model.DocumentableKind.METHOD:
+        return ob.fullName() in inventory['py:method']
+    if ob.kind in (
+        model.DocumentableKind.CLASS_VARIABLE,
+        model.DocumentableKind.INSTANCE_VARIABLE,
+    ):
+        return ob.fullName() in inventory['py:attribute']
+    if ob.kind == model.DocumentableKind.PROPERTY:
+        return ob.fullName() in inventory['py:property']
+    # TODO: it's not ideal that we default to True, ideally we could cover all kinds
+    return True
+
+
+class SphinxAwareSystem(model.System):
+    def __init__(self, inventory: Inventory) -> None:
+        super().__init__()
+        self._inventory = inventory
+
+    def privacyClass(self, ob: model.Documentable):
+        if not is_documented_in_inventory(ob, self._inventory):
+            return model.PrivacyClass.PRIVATE
+
+        return super().privacyClass(ob)
 
 
 if __name__ == '__main__':
@@ -150,6 +190,9 @@ if __name__ == '__main__':
     dist = Path('dist')
     dist.mkdir(exist_ok=True)
 
+    inventories = Path('inventories')
+    inventories.mkdir(exist_ok=True)
+
     for path in sources.iterdir():
         sourceid = path.name
         package_name, version = sourceid.rsplit('-', maxsplit=1)
@@ -177,14 +220,35 @@ if __name__ == '__main__':
         print('generating', sourceid)
 
         out_dir.mkdir(parents=True)
+        system = None
+
+        if 'sphinx_inventory_url' in packages[package_name]:
+            inventory_url = packages[package_name]['sphinx_inventory_url']
+            url_base = inventory_url.rsplit('/', maxsplit=1)[0]
+            inventory_path = inventories / (package_name + '.inv')
+            try:
+                with inventory_path.open('rb') as f:
+                    inventory = InventoryFile.load(f, url_base, posixpath.join)
+            except FileNotFoundError:
+                inventory_bytes = requests.get(inventory_url, stream=True).content
+                inventory = InventoryFile.load(
+                    io.BytesIO(inventory_bytes), url_base, posixpath.join
+                )
+                with inventory_path.open('wb') as f:
+                    f.write(inventory_bytes)
+
+            system = SphinxAwareSystem(inventory)
+            system.options.docformat = docformat
+
         pydoctor.driver.main(
             # fmt: off
             [
                 str(package_paths[0]),
                 '--html-output', out_dir,
                 '--docformat', docformat,
-            ]
+            ],
             # fmt: on
+            system=system,
         )
 
     # 3. create latest symlinks

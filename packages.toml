@@ -38,6 +38,8 @@ docformat = "epytext"
 [setuptools]
 
 [sphinx]
+sphinx_inventory_url = "https://www.sphinx-doc.org/objects.inv"
+# TODO: this is the inventory for the master branch, stable would be better
 
 [sqlalchemy]
 
