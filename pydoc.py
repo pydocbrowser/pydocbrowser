@@ -90,6 +90,7 @@ def is_documented_in_inventory(ob: model.Documentable, inventory: Inventory) -> 
     # TODO: it's not ideal that we default to True, ideally we could cover all kinds
     return True
 
+
 def inventory_members(inventory: Inventory):
     for x in inventory['py:class']:
         yield x
@@ -124,6 +125,7 @@ class SphinxAwareSystem(model.System):
 
         return super().privacyClass(ob)
 
+
 def system_for_sphinx_inventory(inventory_url: str):
     inventory_url = packages[package_name]['sphinx_inventory_url']
     url_base = inventory_url.rsplit('/', maxsplit=1)[0]
@@ -140,13 +142,16 @@ def system_for_sphinx_inventory(inventory_url: str):
             f.write(inventory_bytes)
 
     if 'py:module' not in inventory:
-        print(f"[warning] sphinx inventory for {package_name} does not contain py:module, we're ignoring the inventory")
+        print(
+            f"[warning] sphinx inventory for {package_name} does not contain py:module, we're ignoring the inventory"
+        )
         # TODO: display warning in HTML
         return None
 
     system = SphinxAwareSystem(inventory)
     system.options.docformat = docformat
     return system
+
 
 if __name__ == '__main__':
     sources = Path('sources')
@@ -268,8 +273,9 @@ if __name__ == '__main__':
         system = None
 
         if 'sphinx_inventory_url' in packages[package_name]:
-            system = system_for_sphinx_inventory(packages[package_name]['sphinx_inventory_url'])
-
+            system = system_for_sphinx_inventory(
+                packages[package_name]['sphinx_inventory_url']
+            )
 
         pydoctor.driver.main(
             # fmt: off
