@@ -245,7 +245,7 @@ if __name__ == '__main__':
     inventories = Path('inventories')
     inventories.mkdir(exist_ok=True)
 
-    for package_name in packages:
+    for package_name in list(packages):
         version = versions[package_name]
         sourceid = f'{package_name}-{version}'
         if not (sources / sourceid).exists():
@@ -282,6 +282,8 @@ if __name__ == '__main__':
                 )
             except InventoryLookupError as e:
                 print(f'[warning] skipping {package_name} because sphinx inventory lookup failed: {e}')
+                del packages[package_name]
+                del package_infos[package_name]
                 continue
 
         out_dir.mkdir(parents=True)
@@ -299,9 +301,8 @@ if __name__ == '__main__':
 
     # 3. create latest symlinks
     for package_name, version in versions.items():
-        if not (dist / package_name).exists():
+        if package_name not in packages:
             continue
-
         latest = dist / package_name / 'latest'
         latest.unlink(missing_ok=True)
         latest.symlink_to(version)
