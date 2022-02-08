@@ -8,6 +8,8 @@ import zipfile
 from pathlib import Path
 from typing import Dict, List
 
+import jinja2
+import mistletoe
 import pkg_resources
 import pydoctor.driver
 import requests
@@ -75,10 +77,13 @@ if __name__ == '__main__':
 
     # 1. fetch sources
 
+    package_infos = {}
+
     for package_name in (
         pkg_resources.resource_string(__name__, 'packages.txt').decode().splitlines()
     ):
         package = fetch_package_info(package_name)
+        package_infos[package_name] = package
         version = package['info']['version']
 
         sourceid = f'{package_name}-{version}'
@@ -189,3 +194,22 @@ if __name__ == '__main__':
         latest = dist / package_name / 'latest'
         latest.unlink(missing_ok=True)
         latest.symlink_to(version)
+
+    # 4. create start page
+    env = jinja2.Environment(loader=jinja2.PackageLoader("pydoc"), autoescape=True)
+
+    readme_html = mistletoe.markdown(
+        pkg_resources.resource_string(__name__, 'README.md').decode()
+    )
+    contributing_html = mistletoe.markdown(
+        pkg_resources.resource_string(__name__, 'CONTRIBUTING.md').decode()
+    )
+
+    with open(dist / 'index.html', 'w') as f:
+        f.write(
+            env.get_template('index.html').render(
+                readme=readme_html,
+                contributing=contributing_html,
+                packages=package_infos.items(),
+            )
+        )
