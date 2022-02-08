@@ -5,6 +5,7 @@ sphinx_inventory_url = "https://babel.pocoo.org/en/stable/objects.inv"
 sphinx_inventory_url = "https://www.crummy.com/software/BeautifulSoup/bs4/doc/objects.inv"
 
 [bottle]
+sphinx_inventory_url = "https://bottlepy.org/docs/stable/objects.inv"
 
 [click]
 
