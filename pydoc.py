@@ -48,6 +48,10 @@ def find_packages(path: Path, package_name: str) -> List[Path]:
     if (path / 'src' / package_name / '__init__.py').exists():
         return [path / 'src' / package_name]
 
+    if (path / (package_name + '.py')).exists():
+        # single-file package (e.g. Bottle)
+        return [path / (package_name + '.py')]
+
     packages = []
 
     for subpath in path.iterdir():
