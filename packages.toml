@@ -1,4 +1,5 @@
 [babel]
+sphinx_inventory_url = "https://babel.pocoo.org/en/stable/objects.inv"
 
 [beautifulsoup4]
 

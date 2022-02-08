@@ -86,7 +86,7 @@ def is_documented_in_inventory(ob: model.Documentable, inventory: Inventory) -> 
     ):
         return ob.fullName() in inventory['py:attribute']
     if ob.kind == model.DocumentableKind.PROPERTY:
-        return ob.fullName() in inventory['py:property']
+        return ob.fullName() in inventory.get('py:property', ())
     # TODO: it's not ideal that we default to True, ideally we could cover all kinds
     return True
 
@@ -98,6 +98,7 @@ class SphinxAwareSystem(model.System):
 
     def privacyClass(self, ob: model.Documentable):
         if not is_documented_in_inventory(ob, self._inventory):
+            # TODO: if ob is return type by another public API member consider it public
             return model.PrivacyClass.PRIVATE
 
         return super().privacyClass(ob)
