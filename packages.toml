@@ -34,22 +34,30 @@ sphinx_inventory_url = "https://docs.makotemplates.org/en/latest/objects.inv"
 [mistletoe]
 
 [numpy]
+sphinx_inventory_url = "https://numpy.org/doc/stable/objects.inv"
 
 [pydoctor]
 docformat = "epytext"
 
 [pygments]
+sphinx_inventory_url = "https://pygments.org/objects.inv"
+# TODO: this is the inventory for the master branch, stable would be better
 
 [requests]
+sphinx_inventory_url = "https://docs.python-requests.org/en/stable/objects.inv"
 
 [scrapy]
+sphinx_inventory_url = "https://docs.scrapy.org/en/latest/objects.inv"
 
-[setuptools]
+# [setuptools]
+# sphinx_inventory_url = "https://setuptools.pypa.io/en/stable/objects.inv"
+# TODO: disabled because setuptools inventory uses distutils to refer to its API?
 
 [sphinx]
 sphinx_inventory_url = "https://www.sphinx-doc.org/objects.inv"
 # TODO: this is the inventory for the master branch, stable would be better
 
 [sqlalchemy]
+sphinx_inventory_url = "https://docs.sqlalchemy.org/en/14/objects.inv"
 
 [werkzeug]

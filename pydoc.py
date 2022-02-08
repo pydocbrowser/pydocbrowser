@@ -245,9 +245,11 @@ if __name__ == '__main__':
     inventories = Path('inventories')
     inventories.mkdir(exist_ok=True)
 
-    for path in sources.iterdir():
-        sourceid = path.name
-        package_name, version = sourceid.rsplit('-', maxsplit=1)
+    for package_name in packages:
+        version = versions[package_name]
+        sourceid = f'{package_name}-{version}'
+        if not (sources / sourceid).exists():
+            continue
 
         package_paths = list(find_packages(sources / sourceid, package_name))
 
