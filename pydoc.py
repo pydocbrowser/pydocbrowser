@@ -156,17 +156,17 @@ if __name__ == '__main__':
         sourceid = path.name
         package_name, version = sourceid.rsplit('-', maxsplit=1)
 
-        packages = list(find_packages(sources / sourceid, package_name))
+        package_paths = list(find_packages(sources / sourceid, package_name))
 
-        if len(packages) == 0:
+        if len(package_paths) == 0:
             print(
                 '[error] failed to determine package directory for', sources / sourceid
             )
             continue
 
-        if len(packages) > 1:
+        if len(package_paths) > 1:
             print(
-                f"[warning] found multiple packages for {package_name} ({packages}), we're just using the first one"
+                f"[warning] found multiple packages for {package_name} ({package_paths}), we're just using the first one"
             )
 
         docformat = overrides['docformat'].get(package_name, 'restructuredtext')
@@ -182,7 +182,7 @@ if __name__ == '__main__':
         pydoctor.driver.main(
             # fmt: off
             [
-                str(packages[0]),
+                str(package_paths[0]),
                 '--html-output', out_dir,
                 '--docformat', docformat,
             ]
