@@ -79,9 +79,10 @@ if __name__ == '__main__':
 
     package_infos = {}
 
-    for package_name in (
-        pkg_resources.resource_string(__name__, 'packages.txt').decode().splitlines()
-    ):
+    with open('packages.toml') as f:
+        packages = toml.load(f)
+
+    for package_name in packages:
         package = fetch_package_info(package_name)
         package_infos[package_name] = package
         version = package['info']['version']
@@ -144,9 +145,6 @@ if __name__ == '__main__':
 
     shutil.rmtree(download_dir)
 
-    with open('overrides.toml') as f:
-        overrides = toml.load(f)
-
     # 2. generate docs with pydoctor
 
     dist = Path('dist')
@@ -169,7 +167,7 @@ if __name__ == '__main__':
                 f"[warning] found multiple packages for {package_name} ({package_paths}), we're just using the first one"
             )
 
-        docformat = overrides['docformat'].get(package_name, 'restructuredtext')
+        docformat = packages[package_name].get('docformat', 'restructuredtext')
 
         out_dir = dist / package_name / version
 
