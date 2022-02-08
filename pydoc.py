@@ -264,6 +264,7 @@ if __name__ == '__main__':
                 system.options.docformat = docformat
             else:
                 print(f"[warning] sphinx inventory for {package_name} does not contain py:module, we're ignoring the inventory")
+                # TODO: display warning in HTML
 
 
         pydoctor.driver.main(
