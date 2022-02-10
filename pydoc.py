@@ -3,6 +3,7 @@ import configparser
 import io
 import json
 import shutil
+import sys
 import tarfile
 import tempfile
 import zipfile
@@ -313,15 +314,18 @@ if __name__ == '__main__':
     readme_html = mistletoe.markdown(
         pkg_resources.resource_string(__name__, 'README.md').decode()
     )
-    contributing_html = mistletoe.markdown(
-        pkg_resources.resource_string(__name__, 'CONTRIBUTING.md').decode()
-    )
+
+    sep = '<!-- package list -->'
+    try:
+        before, after = readme_html.split(sep)
+    except ValueError:
+        sys.exit(f'[fatal error] expected {sep} in README.md')
 
     with open(dist / 'index.html', 'w') as f:
         f.write(
             env.get_template('index.html').render(
-                readme=readme_html,
-                contributing=contributing_html,
+                before=before,
                 packages=package_infos.items(),
+                after=after,
             )
         )

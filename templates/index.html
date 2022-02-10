@@ -9,7 +9,7 @@
         </style>
     </head>
     <body>
-        {{ readme | safe }}
+        {{ before | safe }}
 
         <p>pydoc.dev is currently in early alpha and only hosts
         documentation for {{ packages | length }} packages:</p>
@@ -20,6 +20,6 @@
         {% endfor %}
         </ul>
 
-        {{ contributing | safe }}
+        {{ after | safe }}
     </body>
 </html>
