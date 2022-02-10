@@ -13,6 +13,8 @@ sphinx_inventory_url = "https://click.palletsprojects.com/en/8.0.x/objects.inv"
 [django]
 sphinx_inventory_url = "https://docs.djangoproject.com/en/4.0/objects.inv"
 
+[docspec]
+
 [docutils]
 
 [flask]
