@@ -34,6 +34,7 @@ sphinx_inventory_url = "https://docs.makotemplates.org/en/latest/objects.inv"
 # uses mkdocs -> we cannot reliably determine public / private API
 
 [mistletoe]
+docformat = "google"
 
 [numpy]
 sphinx_inventory_url = "https://numpy.org/doc/stable/objects.inv"
