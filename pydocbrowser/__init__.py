@@ -204,7 +204,11 @@ def main():
         if package_name not in packages:
             continue
         latest = dist / package_name / 'latest'
-        latest.unlink(missing_ok=True)
+        try:
+            latest.unlink(missing_ok=True)
+        except IsADirectoryError:
+            # Github transform symlink to actual directories it seem...
+            shutil.rmtree(latest.as_posix())
         latest.symlink_to(version)
 
     # 4. create start page
