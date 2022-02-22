@@ -66,6 +66,7 @@ SOURCES = 'build/sources'
 VERSIONS = 'build/versions.json'
 WWW = 'build/www'
 README = 'README.md'
+PACKAGES = 'packages.toml'
 
 def main():
     sources = Path(SOURCES)
@@ -84,7 +85,7 @@ def main():
     print('fetching sources...')
     package_infos = {}
 
-    with open('packages.toml') as f:
+    with open(PACKAGES) as f:
         packages = toml.load(f)
 
     for package_name in packages:
