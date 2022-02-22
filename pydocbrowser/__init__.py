@@ -70,7 +70,7 @@ PACKAGES = 'packages.toml'
 
 def main():
     sources = Path(SOURCES)
-    sources.mkdir(exist_ok=True)
+    sources.mkdir(exist_ok=True, parents=True)
 
     try:
         with open(VERSIONS) as f:
