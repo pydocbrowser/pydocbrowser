@@ -3,3 +3,5 @@ versions.json
 sources/
 dist/
 inventories/
+build/
+www/
