@@ -8,6 +8,7 @@ setup(
     author              =   "Martin Fischer",
     maintainer          =   "Tristan Landes",
     packages            =   ['pydocbrowser',],
+    package_data        =   {'pydocbrowser': ['templates/*.html']},
     install_requires    =   [
         "Jinja2", "mistletoe", "pydoctor", "requests", "toml",
     ],
