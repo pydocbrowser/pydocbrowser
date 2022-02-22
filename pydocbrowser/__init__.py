@@ -3,6 +3,8 @@ import configparser
 import json
 import shutil
 import sys
+import contextlib
+import io
 import tarfile
 import tempfile
 import zipfile
@@ -60,9 +62,9 @@ def find_packages(path: Path, package_name: str) -> List[Path]:
                 packages.append(subpath)
     return packages
 
-SOURCES = '.pydocbrowser/sources'
-VERSIONS = '.pydocbrowser/versions.json'
-DIST = '.pydocbrowser/dist'
+SOURCES = 'build/sources'
+VERSIONS = 'build/versions.json'
+WWW = 'build/www'
 README = 'README.md'
 
 def main():
@@ -79,6 +81,7 @@ def main():
 
     # 1. fetch sources
 
+    print('fetching sources...')
     package_infos = {}
 
     with open('packages.toml') as f:
@@ -149,7 +152,8 @@ def main():
 
     # 2. generate docs with pydoctor
 
-    dist = Path(DIST)
+    print('generating docs...')
+    dist = Path(WWW)
     dist.mkdir(exist_ok=True)
 
     for package_name in list(packages):
@@ -178,18 +182,21 @@ def main():
         if out_dir.exists():
             continue
 
-        print('generating', sourceid)
-
         out_dir.mkdir(parents=True)
 
-        pydoctor.driver.main(
-            [
-                str(package_paths[0]),
-                '--html-output', out_dir,
-                '--docformat', docformat,
-                '--quiet',
-            ],
-        )
+        _f = io.StringIO()
+        with contextlib.redirect_stdout(_f):
+            pydoctor.driver.main(
+                [
+                    str(package_paths[0]),
+                    '--html-output', out_dir,
+                    '--docformat', docformat,
+                    '--quiet',
+                ],
+            )
+
+        _pydoctor_output = _f.getvalue()
+        print(f'{sourceid}: {len(_pydoctor_output.splitlines())} warnings')
 
     # 3. create latest symlinks
     for package_name, version in versions.items():
@@ -208,6 +215,7 @@ def main():
     )
 
     sep = '<!-- package list -->'
+    
     try:
         before, after = readme_html.split(sep)
     except ValueError:
