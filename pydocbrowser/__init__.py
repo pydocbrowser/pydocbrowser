@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 import configparser
-import io
 import json
 import shutil
 import sys
@@ -8,25 +7,18 @@ import tarfile
 import tempfile
 import zipfile
 from pathlib import Path
-import posixpath
 from typing import Dict, List
 
 import jinja2
 import mistletoe
-import pkg_resources
 import pydoctor.driver
-from pydoctor import model
-from sphinx.util.typing import Inventory
-from sphinx.util.inventory import InventoryFile
 import requests
 import toml
 
 # TODO: set USER_AGENT
 
-
 def fetch_package_info(package_name: str):
     return requests.get(f'https://pypi.org/pypi/{package_name}/json').json()
-
 
 def find_packages(path: Path, package_name: str) -> List[Path]:
     package_name = package_name.lower()
@@ -68,100 +60,17 @@ def find_packages(path: Path, package_name: str) -> List[Path]:
                 packages.append(subpath)
     return packages
 
+SOURCES = '.pydocbrowser/sources'
+VERSIONS = '.pydocbrowser/versions.json'
+DIST = '.pydocbrowser/dist'
+README = 'README.md'
 
-def is_documented_in_inventory(ob: model.Documentable, inventory: Inventory) -> bool:
-    if isinstance(ob, model.Module):
-        return ob.fullName() in inventory.get('py:module', ())
-    if isinstance(ob, model.Class):
-        return (
-            ob.fullName() in inventory['py:class']
-            or ob.fullName() in inventory.get('py:exception', ())
-        )
-    if ob.kind == model.DocumentableKind.FUNCTION:
-        return ob.fullName() in inventory['py:function']
-    if ob.kind == model.DocumentableKind.METHOD:
-        return ob.fullName() in inventory['py:method']
-    if ob.kind in (
-        model.DocumentableKind.CLASS_VARIABLE,
-        model.DocumentableKind.INSTANCE_VARIABLE,
-    ):
-        return ob.fullName() in inventory['py:attribute']
-    if ob.kind == model.DocumentableKind.PROPERTY:
-        return ob.fullName() in inventory.get('py:property', ())
-    # TODO: it's not ideal that we default to True, ideally we could cover all kinds
-    return True
-
-
-def inventory_members(inventory: Inventory):
-    for x in inventory['py:class']:
-        yield x
-    for x in inventory.get('py:exception', ()):
-        yield x
-    for x in inventory['py:function']:
-        yield x
-    for x in inventory['py:method']:
-        yield x
-    for x in inventory['py:attribute']:
-        yield x
-    for x in inventory.get('py:property', ()):
-        yield x
-
-
-class SphinxAwareSystem(model.System):
-    def __init__(self, inventory: Inventory) -> None:
-        super().__init__()
-        self._inventory = inventory
-        self._public_modules = set(inventory.get('py:module', ()))
-        for x in inventory_members(inventory):
-            self._public_modules.add(x.rsplit('.', maxsplit=1)[0])
-
-    def privacyClass(self, ob: model.Documentable):
-        if isinstance(ob, model.Module):
-            if ob.fullName() in self._public_modules:
-                return model.PrivacyClass.VISIBLE
-
-        if not is_documented_in_inventory(ob, self._inventory):
-            # TODO: if ob is return type by another public API member consider it public
-            return model.PrivacyClass.PRIVATE
-
-        return super().privacyClass(ob)
-
-class InventoryLookupError(Exception):
-    pass
-
-def system_for_sphinx_inventory(inventory_url: str):
-    inventory_url = packages[package_name]['sphinx_inventory_url']
-    url_base = inventory_url.rsplit('/', maxsplit=1)[0]
-    inventory_path = inventories / (package_name + '.inv')
-    try:
-        with inventory_path.open('rb') as f:
-            inventory = InventoryFile.load(f, url_base, posixpath.join)
-    except FileNotFoundError:
-        resp = requests.get(inventory_url, stream=True)
-        if resp.status_code != 200:
-            raise InventoryLookupError(f'sphinx_inventory_url returned unexpected http status code {resp.status_code}')
-        inventory_bytes = resp.content
-        inventory = InventoryFile.load(
-            io.BytesIO(inventory_bytes), url_base, posixpath.join
-        )
-        with inventory_path.open('wb') as f:
-            f.write(inventory_bytes)
-
-    if 'py:class' not in inventory:
-        # we intionally don't require py:module because some projects don't use it (e.g. mako)
-        raise InventoryLookupError(f"sphinx inventory does not contain py:module")
-
-    system = SphinxAwareSystem(inventory)
-    system.options.docformat = docformat
-    return system
-
-
-if __name__ == '__main__':
-    sources = Path('sources')
+def main():
+    sources = Path(SOURCES)
     sources.mkdir(exist_ok=True)
 
     try:
-        with open('versions.json') as f:
+        with open(VERSIONS) as f:
             versions = json.load(f)
     except FileNotFoundError:
         versions: Dict[str, str] = {}
@@ -233,18 +142,15 @@ if __name__ == '__main__':
 
             versions[package_name] = version
 
-    with open('versions.json', 'w') as f:
+    with open(VERSIONS, 'w') as f:
         json.dump(versions, f)
 
     shutil.rmtree(download_dir)
 
     # 2. generate docs with pydoctor
 
-    dist = Path('dist')
+    dist = Path(DIST)
     dist.mkdir(exist_ok=True)
-
-    inventories = Path('inventories')
-    inventories.mkdir(exist_ok=True)
 
     for package_name in list(packages):
         version = versions[package_name]
@@ -274,30 +180,15 @@ if __name__ == '__main__':
 
         print('generating', sourceid)
 
-        system = None
-
-        if 'sphinx_inventory_url' in packages[package_name]:
-            try:
-                system = system_for_sphinx_inventory(
-                    packages[package_name]['sphinx_inventory_url']
-                )
-            except InventoryLookupError as e:
-                print(f'[warning] skipping {package_name} because sphinx inventory lookup failed: {e}')
-                del packages[package_name]
-                del package_infos[package_name]
-                continue
-
         out_dir.mkdir(parents=True)
 
         pydoctor.driver.main(
-            # fmt: off
             [
                 str(package_paths[0]),
                 '--html-output', out_dir,
                 '--docformat', docformat,
+                '--quiet',
             ],
-            # fmt: on
-            system=system,
         )
 
     # 3. create latest symlinks
@@ -309,10 +200,11 @@ if __name__ == '__main__':
         latest.symlink_to(version)
 
     # 4. create start page
-    env = jinja2.Environment(loader=jinja2.PackageLoader("pydoc"), autoescape=True)
+    env = jinja2.Environment(
+        loader=jinja2.PackageLoader("pydocbrowser"), autoescape=True)
 
     readme_html = mistletoe.markdown(
-        pkg_resources.resource_string(__name__, 'README.md').decode()
+        Path(README).read_text()
     )
 
     sep = '<!-- package list -->'
