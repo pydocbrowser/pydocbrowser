@@ -18,4 +18,4 @@ jobs:
             -H "Accept: application/vnd.github.everest-preview+json" \
             -H "Content-Type: application/json" \
             https://api.github.com/repos/pydocbrowser/pydocbrowser.github.io/actions/workflows/20465935/dispatches \
-            --data '{"ref": "master"}'
+            --data '{"ref": "main"}'
