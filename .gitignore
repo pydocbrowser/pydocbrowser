@@ -5,3 +5,5 @@ dist/
 inventories/
 build/
 www/
+.tox/
+*.egg-info/
