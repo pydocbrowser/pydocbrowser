@@ -9,6 +9,7 @@ import io
 import tarfile
 import tempfile
 import zipfile
+import datetime
 from pathlib import Path
 from typing import Any, Dict, Iterable, Iterator, List, Sequence, cast
 
@@ -24,7 +25,9 @@ import toml
 # - Automatically create pull request every day including X new libraries 
 #       https://peterevans.dev/posts/github-actions-how-to-create-pull-requests-automatically/
 # - Build iteratively the docs in order to be able to scale this to the size of many projects.
-# - Keepp in mind github CI limitation which is 6hours per job maximum.
+#    Keepp in mind github CI limitation which is 6hours per job maximum.
+#    It could work by using the github API to launch a new build after 2 hours of docs building.
+#    WIP...
 # - Include a very simple search bar in the index.html
 # - Add indications to add a library to the system
 # - Re-generate all latest documentations when we detect that the documentation have been 
@@ -37,6 +40,8 @@ BUILD = 'build'
 SOURCES = 'sources'
 VERSIONS = 'versions.json'
 WWW = 'www'
+
+BUILD_TIMEOUT = 120
 
 EXTRA_CSS = (importlib_resources.files('pydocbrowser') / 
                                         'pydoctor_templates' / 
@@ -58,12 +63,16 @@ def get_parser() -> argparse.ArgumentParser:
     parser.add_argument('--build-dir', metavar="PATH", dest='build_dir',
                         help="Build directory.", 
                         type=Path, default=BUILD)
+    parser.add_argument('--build-timeout', metavar="MINUTES", dest='build_timeout',
+                        help="Build timeout, in minutes.", 
+                        type=int, default=BUILD_TIMEOUT)
     return parser
 
 class Options(argparse.Namespace):
     config_file: Path
     readme_file: Path
     build_dir: Path
+    build_timeout: int
 
 INTERSPHINX_URL_TEMPLATE = "https://pydocbrowser.github.io/%s/latest/objects.inv"
 
@@ -118,10 +127,13 @@ def find_packages(path: Path, package_name: str) -> List[Path]:
                 packages.append(subpath)
     return packages
 
-def main(args: Sequence[str] = sys.argv[1:]) -> None:
+def main(args: Sequence[str] = sys.argv[1:]) -> int:
+    _exit_code = 0
 
     options = cast(Options, get_parser().parse_args(args))
-    
+    _build_start_time = datetime.datetime.now()
+    _build_timeout = datetime.timedelta(minutes=options.build_timeout)
+
     sources = options.build_dir / SOURCES
     sources.mkdir(exist_ok=True, parents=True)
 
@@ -268,9 +280,18 @@ def main(args: Sequence[str] = sys.argv[1:]) -> None:
         _pydoctor_output = _f.getvalue()
         print(f'{sourceid}: {len(_pydoctor_output.splitlines())} warnings')
 
-    # 3. create latest symlinks
+        if _build_start_time+_build_timeout < datetime.datetime.now():
+            print('[warning] could not finish building all docs within the required time')
+            _exit_code = 21
+            break
+
+    # 3. create latest symlinks, for packages that we actually created docs for.
     for package_name, version in versions.items():
         if package_name not in packages:
+            continue
+        if not (dist / package_name / version / 'index.html').exists():
+            if _exit_code!=21:
+                print(f'[error] looks like pydoctor build failed for {package_name}-{version}')
             continue
         latest = dist / package_name / 'latest'
         try:
@@ -306,3 +327,5 @@ def main(args: Sequence[str] = sys.argv[1:]) -> None:
         )
     with open(dist / 'extra.css', 'w') as f:
         f.write(EXTRA_CSS)
+
+    return _exit_code
