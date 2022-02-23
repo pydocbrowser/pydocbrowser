@@ -9,9 +9,9 @@ import tarfile
 import tempfile
 import zipfile
 from pathlib import Path
-from importlib import resources
 from typing import Dict, List
 
+import importlib_resources
 import jinja2
 import mistletoe
 import pydoctor.driver
@@ -196,11 +196,11 @@ def main():
         # preparing the pydoctor templates
         pydoctor_templates_dir = Path(tempfile.mkdtemp(prefix='pydocbrowser-'))
         with (pydoctor_templates_dir / 'extra.css').open('w') as fob:
-            fob.write((resources.files('pydocbrowser') / 
+            fob.write((importlib_resources.files('pydocbrowser') / 
                                         'pydoctor_templates' / 
                                         'extra.css').read_text())
         with (pydoctor_templates_dir / 'header.html').open('w') as fob:
-            fob.write((resources.files('pydocbrowser') / 
+            fob.write((importlib_resources.files('pydocbrowser') / 
                                         'pydoctor_templates' / 
                                         'header.html').read_text().replace("<!-- sourceid -->", sourceid))
 

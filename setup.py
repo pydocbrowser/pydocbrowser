@@ -11,7 +11,7 @@ setup(
     package_data        =   {'pydocbrowser': ['templates/*.html', 
                                               'pydoctor_templates/*.html']},
     install_requires    =   [
-        "Jinja2", "mistletoe", "pydoctor", "requests", "toml",
+        "Jinja2", "mistletoe", "pydoctor", "requests", "toml", "importlib_resources"
     ],
-    python_requires=">=3.8",
+    python_requires=">=3.6",
 )
