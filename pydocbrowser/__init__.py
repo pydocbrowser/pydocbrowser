@@ -139,6 +139,7 @@ def main():
                     else:
                         member.name = '.'
                 tf.extractall(sources / sourceid)
+            
             elif filename.endswith('.zip'):
                 with zipfile.ZipFile(archive_path) as zf:
                     for info in zf.infolist():
@@ -149,7 +150,7 @@ def main():
                             info.filename = './'
                         zf.extract(info, sources / sourceid)
             else:
-                print('[error] unknown source dist archive format', filename)
+                raise RuntimeError(f'unknown python source dist archive format: {filename}')
 
             versions[package_name] = version
 
@@ -210,7 +211,11 @@ def main():
                     f'--html-output={out_dir}',
                     f'--docformat={docformat}',
                     f'--template-dir={pydoctor_templates_dir}', 
-                    '--quiet', str(package_paths[0]),
+                    f'--project-base-dir={sources/sourceid}',
+                    f'--html-viewsource-base=https://github.com/pydocbrowser/pydocbrowser.github.io/tree/main/build/sources/{sourceid}/',
+                    '--intersphinx=https://docs.python.org/3/objects.inv', 
+                    '--quiet', 
+                    str(package_paths[0]),
                 ],
             )
         
