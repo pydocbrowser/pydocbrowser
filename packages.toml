@@ -27,6 +27,7 @@
 [jinja2]
 
 [klein]
+pydoctor_args = ["--docformat=epytext", ]
 
 [ldaptor]
 
@@ -37,15 +38,15 @@
 [markdown]
 
 [mistletoe]
-docformat = "google"
+pydoctor_args = ["--docformat=google", ]
 
 [mypy]
 
-# Fails because of https://github.com/twisted/pydoctor/issues/501
-# [numpy]
+[numpy]
+pydoctor_args = ["--docformat=numpy", ]
 
 [pydoctor]
-docformat = "epytext"
+pydoctor_args = ["--docformat=epytext", ]
 
 [pygments]
 
@@ -64,6 +65,7 @@ docformat = "epytext"
 [treq]
 
 [twisted]
+pydoctor_args = ["--docformat=epytext", ]
 
 [urllib3]
 
