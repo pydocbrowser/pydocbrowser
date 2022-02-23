@@ -9,6 +9,7 @@ import tarfile
 import tempfile
 import zipfile
 from pathlib import Path
+from importlib import resources
 from typing import Dict, List
 
 import jinja2
@@ -17,10 +18,16 @@ import pydoctor.driver
 import requests
 import toml
 
-# TODO: set USER_AGENT
+# TODOs: 
+# - Use argparse and make the path to packages.toml configurable
+# - Generate a index of versions per packages and link to that from the header
+# - Automatically create pull request every day including 10 new libraries 
+#       https://peterevans.dev/posts/github-actions-how-to-create-pull-requests-automatically/
+# - 
 
 def fetch_package_info(package_name: str):
-    return requests.get(f'https://pypi.org/pypi/{package_name}/json').json()
+    return requests.get(f'https://pypi.org/pypi/{package_name}/json',
+        headers={'User-Agent': 'pydocbrowser/pydocbrowser'}).json()
 
 def find_packages(path: Path, package_name: str) -> List[Path]:
     package_name = package_name.lower()
@@ -78,7 +85,7 @@ def main():
     except FileNotFoundError:
         versions: Dict[str, str] = {}
 
-    download_dir = Path(tempfile.mkdtemp(prefix='pydoc-'))
+    download_dir = Path(tempfile.mkdtemp(prefix='pydocbrowser-'))
 
     # 1. fetch sources
 
@@ -185,16 +192,29 @@ def main():
 
         out_dir.mkdir(parents=True)
 
+        # preparing the pydoctor templates
+        pydoctor_templates_dir = Path(tempfile.mkdtemp(prefix='pydocbrowser-'))
+        with (pydoctor_templates_dir / 'extra.css').open('w') as fob:
+            fob.write((resources.files('pydocbrowser') / 
+                                        'pydoctor_templates' / 
+                                        'extra.css').read_text())
+        with (pydoctor_templates_dir / 'header.html').open('w') as fob:
+            fob.write((resources.files('pydocbrowser') / 
+                                        'pydoctor_templates' / 
+                                        'header.html').read_text().replace("<!-- sourceid -->", sourceid))
+
         _f = io.StringIO()
         with contextlib.redirect_stdout(_f):
             pydoctor.driver.main(
                 [
-                    str(package_paths[0]),
-                    '--html-output', out_dir,
-                    '--docformat', docformat,
-                    '--quiet',
+                    f'--html-output={out_dir}',
+                    f'--docformat={docformat}',
+                    f'--template-dir={pydoctor_templates_dir}', 
+                    '--quiet', str(package_paths[0]),
                 ],
             )
+        
+        shutil.rmtree(pydoctor_templates_dir.as_posix())
 
         _pydoctor_output = _f.getvalue()
         print(f'{sourceid}: {len(_pydoctor_output.splitlines())} warnings')
