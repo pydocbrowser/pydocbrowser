@@ -12,7 +12,12 @@ setup(
                                               'pydoctor_templates/*.html',
                                               'pydoctor_templates/*.css']},
     install_requires    =   [
-        "Jinja2", "mistletoe", "pydoctor", "requests", "toml", "importlib_resources"
+        "Jinja2", 
+        "mistletoe", 
+        "pydoctor>=22.2.1", 
+        "requests", 
+        "toml", 
+        "importlib_resources"
     ],
     python_requires=">=3.6",
 )
