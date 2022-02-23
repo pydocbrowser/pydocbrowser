@@ -35,6 +35,8 @@
 [mistletoe]
 docformat = "google"
 
+[mypy]
+
 # Fails because of https://github.com/twisted/pydoctor/issues/501
 # [numpy]
 
