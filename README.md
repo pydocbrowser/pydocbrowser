@@ -1,5 +1,7 @@
 # Consistent API docs for Python with pydoctor
 
+![build](https://github.com/pydocbrowser/pydocbrowser.github.io/actions/workflows/build.yml/badge.svg)
+
 Looking at the API documentations of Python packages can be a bit disorienting
 because they can look different from project to project (since different
 projects use different [Sphinx] themes) and because the API documentation
