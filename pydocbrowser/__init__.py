@@ -9,7 +9,7 @@ import tarfile
 import tempfile
 import zipfile
 from pathlib import Path
-from typing import Dict, List
+from typing import Any, Dict, List, cast
 
 import importlib_resources
 import jinja2
@@ -25,9 +25,9 @@ import toml
 #       https://peterevans.dev/posts/github-actions-how-to-create-pull-requests-automatically/
 # - 
 
-def fetch_package_info(package_name: str):
-    return requests.get(f'https://pypi.org/pypi/{package_name}/json',
-        headers={'User-Agent': 'pydocbrowser/pydocbrowser'}).json()
+def fetch_package_info(package_name: str) -> Dict[str, Any]:
+    return cast('Dict[str, Any]', requests.get(f'https://pypi.org/pypi/{package_name}/json',
+        headers={'User-Agent': 'pydocbrowser/pydocbrowser'}).json())
 
 def find_packages(path: Path, package_name: str) -> List[Path]:
     package_name = package_name.lower()
@@ -82,15 +82,16 @@ HEADER_HTML = (importlib_resources.files('pydocbrowser') /
                                         'pydoctor_templates' / 
                                         'header.html').read_text()
 
-def main():
+def main() -> None:
     sources = Path(SOURCES)
     sources.mkdir(exist_ok=True, parents=True)
 
+    versions: Dict[str, str] = {}
     try:
         with open(VERSIONS) as f:
-            versions = json.load(f)
+            versions.update(json.load(f))
     except FileNotFoundError:
-        versions: Dict[str, str] = {}
+         pass
 
     download_dir = Path(tempfile.mkdtemp(prefix='pydocbrowser-'))
 
@@ -133,8 +134,8 @@ def main():
 
             archive_path = download_dir / filename
 
-            with requests.get(source_package['url'], stream=True) as r:
-                with open(archive_path, 'wb') as f:
+            with requests.get(source_package['url'], stream=True) as r: 
+                with open(archive_path, 'wb') as f: #type:ignore[assignment]
                     shutil.copyfileobj(r.raw, f)
 
             if filename.endswith('.tar.gz'):
@@ -191,8 +192,6 @@ def main():
                 f"[warning] found multiple packages for {package_name} ({package_paths}), we're just using the first one"
             )
 
-        docformat = packages[package_name].get('docformat', 'restructuredtext')
-
         out_dir = dist / package_name / version
 
         if out_dir.exists():
@@ -210,9 +209,9 @@ def main():
         _f = io.StringIO()
         with contextlib.redirect_stdout(_f):
             pydoctor.driver.main(
+                packages[package_name].get('pydoctor_args', []) + 
                 [
                     f'--html-output={out_dir}',
-                    f'--docformat={docformat}',
                     f'--template-dir={pydoctor_templates_dir}', 
                     f'--project-base-dir={sources/sourceid}',
                     f'--html-viewsource-base=https://github.com/pydocbrowser/pydocbrowser.github.io/tree/main/build/sources/{sourceid}/',
