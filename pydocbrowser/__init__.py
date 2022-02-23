@@ -75,6 +75,13 @@ WWW = 'build/www'
 README = 'README.md'
 PACKAGES = 'packages.toml'
 
+EXTRA_CSS = (importlib_resources.files('pydocbrowser') / 
+                                        'pydoctor_templates' / 
+                                        'extra.css').read_text()
+HEADER_HTML = (importlib_resources.files('pydocbrowser') / 
+                                        'pydoctor_templates' / 
+                                        'header.html').read_text()
+
 def main():
     sources = Path(SOURCES)
     sources.mkdir(exist_ok=True, parents=True)
@@ -196,13 +203,9 @@ def main():
         # preparing the pydoctor templates
         pydoctor_templates_dir = Path(tempfile.mkdtemp(prefix='pydocbrowser-'))
         with (pydoctor_templates_dir / 'extra.css').open('w') as fob:
-            fob.write((importlib_resources.files('pydocbrowser') / 
-                                        'pydoctor_templates' / 
-                                        'extra.css').read_text())
+            fob.write(EXTRA_CSS)
         with (pydoctor_templates_dir / 'header.html').open('w') as fob:
-            fob.write((importlib_resources.files('pydocbrowser') / 
-                                        'pydoctor_templates' / 
-                                        'header.html').read_text().replace("<!-- sourceid -->", sourceid))
+            fob.write(HEADER_HTML.replace("<!-- sourceid -->", f"> {sourceid}"))
 
         _f = io.StringIO()
         with contextlib.redirect_stdout(_f):
@@ -254,8 +257,11 @@ def main():
     with open(dist / 'index.html', 'w') as f:
         f.write(
             env.get_template('index.html').render(
+                header=HEADER_HTML,
                 before=before,
                 packages=package_infos.items(),
                 after=after,
             )
         )
+    with open(dist / 'extra.css', 'w') as f:
+        f.write(EXTRA_CSS)

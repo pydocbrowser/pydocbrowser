@@ -2,24 +2,36 @@
 <html>
     <head>
         <title>Consistent API docs for Python with pydoctor</title>
-        <link rel="stylesheet" href="https://unpkg.com/bamboo.css">
+        <link href="https://getbootstrap.com/docs/3.4/dist/css/bootstrap.min.css" rel="stylesheet">
+        <link href="/extra.css" rel="stylesheet">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <style>
-            body {max-width: 80ch;}
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+            }
+            #main{
+                max-width: 90ch;
+            }
+            #banner{
+                border-bottom:1px solid #e7e7e7;
+            }
         </style>
     </head>
     <body>
-        {{ before | safe }}
+        {{ header | safe }}
+        <div id="main" class="container">
+            {{ before | safe }}
 
-        <p>For now, we only host
-        documentation for {{ packages | length }} packages:</p>
+            <p>For now, we only host
+            documentation for {{ packages | length }} packages:</p>
 
-        <ul style="columns: 200px;">
-        {% for package_name, package in packages %}
-            <li><a href="/{{package_name}}/latest/" title="{{package.info.summary}}">{{package.info.name}}</a></li>
-        {% endfor %}
-        </ul>
+            <ul style="columns: 200px;">
+            {% for package_name, package in packages %}
+                <li><a href="/{{package_name}}/latest/" title="{{package.info.summary}}">{{package.info.name}}</a></li>
+            {% endfor %}
+            </ul>
 
-        {{ after | safe }}
+            {{ after | safe }}
+        </div>
     </body>
 </html>
