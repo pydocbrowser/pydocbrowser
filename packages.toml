@@ -26,6 +26,10 @@
 
 [jinja2]
 
+[klein]
+
+[ldaptor]
+
 [lxml]
 
 [mako]
@@ -56,6 +60,10 @@ docformat = "epytext"
 [sphinx]
 
 [sqlalchemy]
+
+[treq]
+
+[twisted]
 
 [urllib3]
 
