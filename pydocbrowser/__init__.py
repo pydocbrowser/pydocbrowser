@@ -211,7 +211,7 @@ def main(args: Sequence[str] = sys.argv[1:]) -> None:
     print('generating docs...')
     dist = options.build_dir / WWW
     dist.mkdir(exist_ok=True)
-    intersphinx_args = generate_intersphinx_args(packages)
+    intersphinx_args = list(generate_intersphinx_args(packages))
 
     for package_name in list(packages):
         version = versions[package_name]
@@ -245,13 +245,9 @@ def main(args: Sequence[str] = sys.argv[1:]) -> None:
             fob.write(EXTRA_CSS)
         with (pydoctor_templates_dir / 'header.html').open('w') as fob:
             fob.write(HEADER_HTML.replace("<!-- sourceid -->", f"> {sourceid}"))
-
-        _f = io.StringIO()
-        with contextlib.redirect_stdout(_f):
-            pydoctor.driver.main(
-                packages[package_name].get('pydoctor_args', []) + 
-                intersphinx_args +
-                [
+         
+        # generating args
+        _args = packages[package_name].get('pydoctor_args', []) + intersphinx_args + [
                     f'--html-output={out_dir}',
                     f'--template-dir={pydoctor_templates_dir}', 
                     f'--project-base-dir={sources/sourceid}',
@@ -259,8 +255,13 @@ def main(args: Sequence[str] = sys.argv[1:]) -> None:
                     '--intersphinx=https://docs.python.org/3/objects.inv', 
                     '--quiet', 
                     str(package_paths[0]),
-                ],
-            )
+                ]
+        
+        print(f"running 'pydoctor {' '.join(a for a in _args if '--intersphinx' not in a)}'")
+        
+        _f = io.StringIO()
+        with contextlib.redirect_stdout(_f):
+            pydoctor.driver.main(_args)
         
         shutil.rmtree(pydoctor_templates_dir.as_posix())
 
