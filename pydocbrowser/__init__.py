@@ -102,7 +102,7 @@ def find_packages(path: Path, package_name: str) -> List[Path]:
                 if (path / package_dir / package_name / '__init__.py').exists():
                     return [path / package_dir / package_name]
             else:
-                print("[warning] options.package_dir in setup.cfg doesn't start with =")
+                print("[+] options.package_dir in setup.cfg doesn't start with =")
 
     # TODO: Parse the AST of setup.py and extract packages list
 
@@ -148,7 +148,7 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
 
     # 1. fetch sources
 
-    print('fetching sources...')
+    print('[+] fetching sources...')
     package_infos = {}
 
     with options.config_file.open() as f:
@@ -166,7 +166,7 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
             or versions[package_name] != version
             or not (sources / sourceid).exists()
         ):
-            print('downloading', sourceid)
+            print('[-] downloading', sourceid)
 
             source_packages = [
                 p for p in package['releases'][version] if p['packagetype'] == 'sdist'
@@ -175,7 +175,7 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
 
             if len(source_packages) > 1:
                 print(
-                    f"[warning] {package_name} returned multiple source distributions, we're just using the first one"
+                    f"[!] {package_name} returned multiple source distributions, we're just using the first one"
                 )
 
             source_package = source_packages[0]
@@ -220,7 +220,7 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
 
     # 2. generate docs with pydoctor
 
-    print('generating docs...')
+    print('[+] generating docs...')
     dist = options.build_dir / WWW
     dist.mkdir(exist_ok=True)
     intersphinx_args = list(generate_intersphinx_args(packages))
@@ -235,13 +235,13 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
 
         if len(package_paths) == 0:
             print(
-                '[error] failed to determine package directory for', sources / sourceid
+                '[!] failed to determine package directory for', sources / sourceid
             )
             continue
 
         if len(package_paths) > 1:
             print(
-                f"[warning] found multiple packages for {package_name} ({package_paths}), we're just using the first one"
+                f"[!] found multiple packages for {package_name} ({package_paths}), we're just using the first one"
             )
 
         out_dir = dist / package_name / version
@@ -269,7 +269,7 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
                     str(package_paths[0]),
                 ]
         
-        print(f"running 'pydoctor {' '.join(a for a in _args if '--intersphinx' not in a)}'")
+        print(f"[-] running 'pydoctor {' '.join(a for a in _args if '--intersphinx' not in a)}'")
         
         _f = io.StringIO()
         with contextlib.redirect_stdout(_f):
@@ -278,10 +278,10 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
         shutil.rmtree(pydoctor_templates_dir.as_posix())
 
         _pydoctor_output = _f.getvalue()
-        print(f'{sourceid}: {len(_pydoctor_output.splitlines())} warnings')
+        print(f'[-] {sourceid}: {len(_pydoctor_output.splitlines())} warnings')
 
         if _build_start_time+_build_timeout < datetime.datetime.now():
-            print('[warning] could not finish building all docs within the required time')
+            print('[!] could not finish building all docs within the required time')
             _exit_code = 21
             break
 
@@ -291,7 +291,7 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
             continue
         if not (dist / package_name / version / 'index.html').exists():
             if _exit_code!=21:
-                print(f'[error] looks like pydoctor build failed for {package_name}-{version}')
+                print(f'[!] looks like pydoctor build failed for {package_name}-{version}')
             continue
         latest = dist / package_name / 'latest'
         try:
