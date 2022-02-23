@@ -9,7 +9,8 @@ setup(
     maintainer          =   "Tristan Landes",
     packages            =   ['pydocbrowser',],
     package_data        =   {'pydocbrowser': ['templates/*.html', 
-                                              'pydoctor_templates/*.html']},
+                                              'pydoctor_templates/*.html',
+                                              'pydoctor_templates/*.css']},
     install_requires    =   [
         "Jinja2", "mistletoe", "pydoctor", "requests", "toml", "importlib_resources"
     ],
