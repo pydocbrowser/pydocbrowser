@@ -10,7 +10,7 @@ import tarfile
 import tempfile
 import zipfile
 from pathlib import Path
-from typing import Any, Dict, List, Sequence, cast
+from typing import Any, Dict, Iterable, Iterator, List, Sequence, cast
 
 import importlib_resources
 import jinja2
@@ -64,6 +64,12 @@ class Options(argparse.Namespace):
     config_file: Path
     readme_file: Path
     build_dir: Path
+
+INTERSPHINX_URL_TEMPLATE = "https://pydocbrowser.github.io/%s/latest/objects.inv"
+
+def generate_intersphinx_args(packages: Iterable[str]) -> Iterator[str]:
+    for p in packages:
+        yield '--intersphinx=' + INTERSPHINX_URL_TEMPLATE%p
 
 def fetch_package_info(package_name: str) -> Dict[str, Any]:
     return cast('Dict[str, Any]', requests.get(f'https://pypi.org/pypi/{package_name}/json',
@@ -205,6 +211,7 @@ def main(args: Sequence[str] = sys.argv[1:]) -> None:
     print('generating docs...')
     dist = options.build_dir / WWW
     dist.mkdir(exist_ok=True)
+    intersphinx_args = generate_intersphinx_args(packages)
 
     for package_name in list(packages):
         version = versions[package_name]
@@ -243,6 +250,7 @@ def main(args: Sequence[str] = sys.argv[1:]) -> None:
         with contextlib.redirect_stdout(_f):
             pydoctor.driver.main(
                 packages[package_name].get('pydoctor_args', []) + 
+                intersphinx_args +
                 [
                     f'--html-output={out_dir}',
                     f'--template-dir={pydoctor_templates_dir}', 
