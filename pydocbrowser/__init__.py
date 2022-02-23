@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import argparse
 import configparser
 import json
 import shutil
@@ -9,7 +10,7 @@ import tarfile
 import tempfile
 import zipfile
 from pathlib import Path
-from typing import Any, Dict, List, cast
+from typing import Any, Dict, List, Sequence, cast
 
 import importlib_resources
 import jinja2
@@ -19,11 +20,50 @@ import requests
 import toml
 
 # TODOs: 
-# - Use argparse and make the path to packages.toml configurable
 # - Generate a index of versions per packages and link to that from the header
-# - Automatically create pull request every day including 10 new libraries 
+# - Automatically create pull request every day including X new libraries 
 #       https://peterevans.dev/posts/github-actions-how-to-create-pull-requests-automatically/
-# - 
+# - Build iteratively the docs in order to be able to scale this to the size of many projects.
+# - Keepp in mind github CI limitation which is 6hours per job maximum.
+# - Include a very simple search bar in the index.html
+# - Add indications to add a library to the system
+# - Re-generate all latest documentations when we detect that the documentation have been 
+#   generated with an older pydoctor version. Needs iterative build.
+
+README = 'README.md'
+PACKAGES = 'packages.toml'
+
+BUILD = 'build'
+SOURCES = 'sources'
+VERSIONS = 'versions.json'
+WWW = 'www'
+
+EXTRA_CSS = (importlib_resources.files('pydocbrowser') / 
+                                        'pydoctor_templates' / 
+                                        'extra.css').read_text()
+HEADER_HTML = (importlib_resources.files('pydocbrowser') / 
+                                        'pydoctor_templates' / 
+                                        'header.html').read_text()
+
+def get_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+                            description="pydocbrower builder cli", 
+                            formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument('--config-file', metavar="PATH", dest='config_file',
+                        help="Main configuration file.", 
+                        type=Path, default=PACKAGES)
+    parser.add_argument('--readme-file', metavar="PATH", dest='readme_file',
+                        help="Readme file.", 
+                        type=Path, default=README)
+    parser.add_argument('--build-dir', metavar="PATH", dest='build_dir',
+                        help="Build directory.", 
+                        type=Path, default=BUILD)
+    return parser
+
+class Options(argparse.Namespace):
+    config_file: Path
+    readme_file: Path
+    build_dir: Path
 
 def fetch_package_info(package_name: str) -> Dict[str, Any]:
     return cast('Dict[str, Any]', requests.get(f'https://pypi.org/pypi/{package_name}/json',
@@ -49,7 +89,10 @@ def find_packages(path: Path, package_name: str) -> List[Path]:
             else:
                 print("[warning] options.package_dir in setup.cfg doesn't start with =")
 
+    # TODO: Parse the AST of setup.py and extract packages list
+
     # we couldn't find the package via setup.cfg so we fallback to educated guesses
+    # TODO: ensure this behaves likes find_packages()
 
     if (path / package_name / '__init__.py').exists():
         return [path / package_name]
@@ -69,26 +112,16 @@ def find_packages(path: Path, package_name: str) -> List[Path]:
                 packages.append(subpath)
     return packages
 
-SOURCES = 'build/sources'
-VERSIONS = 'build/versions.json'
-WWW = 'build/www'
-README = 'README.md'
-PACKAGES = 'packages.toml'
+def main(args: Sequence[str] = sys.argv[1:]) -> None:
 
-EXTRA_CSS = (importlib_resources.files('pydocbrowser') / 
-                                        'pydoctor_templates' / 
-                                        'extra.css').read_text()
-HEADER_HTML = (importlib_resources.files('pydocbrowser') / 
-                                        'pydoctor_templates' / 
-                                        'header.html').read_text()
-
-def main() -> None:
-    sources = Path(SOURCES)
+    options = cast(Options, get_parser().parse_args(args))
+    
+    sources = options.build_dir / SOURCES
     sources.mkdir(exist_ok=True, parents=True)
 
     versions: Dict[str, str] = {}
     try:
-        with open(VERSIONS) as f:
+        with (options.build_dir / VERSIONS).open() as f:
             versions.update(json.load(f))
     except FileNotFoundError:
          pass
@@ -100,7 +133,7 @@ def main() -> None:
     print('fetching sources...')
     package_infos = {}
 
-    with open(PACKAGES) as f:
+    with options.config_file.open() as f:
         packages = toml.load(f)
 
     for package_name in packages:
@@ -162,7 +195,7 @@ def main() -> None:
 
             versions[package_name] = version
 
-    with open(VERSIONS, 'w') as f:
+    with (options.build_dir/VERSIONS).open('w') as f:
         json.dump(versions, f)
 
     shutil.rmtree(download_dir)
@@ -170,7 +203,7 @@ def main() -> None:
     # 2. generate docs with pydoctor
 
     print('generating docs...')
-    dist = Path(WWW)
+    dist = options.build_dir / WWW
     dist.mkdir(exist_ok=True)
 
     for package_name in list(packages):
