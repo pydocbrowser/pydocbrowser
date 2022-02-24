@@ -11,7 +11,7 @@ import tempfile
 import zipfile
 import datetime
 from pathlib import Path
-from typing import Any, Dict, Iterable, Iterator, List, Sequence, cast
+from typing import Any, Dict, Iterable, Iterator, List, Optional, Sequence, cast
 
 import importlib_resources
 import jinja2
@@ -85,11 +85,10 @@ def fetch_package_info(package_name: str) -> Dict[str, Any]:
         headers={'User-Agent': 'pydocbrowser/pydocbrowser'}).json())
 
 def fetch_source(package_name:str, 
-                 versions: Dict[str, str], 
+                 current_version: Optional[str], 
                  sources: Path) -> Dict[str, Any]:
     """
     Download a package sources if we don't already have them on disk.
-    Set the new version in the versions dict when downloading a new package.
 
     Returns the package infos as returned by fetch_package_info.
     """
@@ -99,8 +98,8 @@ def fetch_source(package_name:str,
     sourceid = f'{package_name}-{version}'
 
     if (
-        package_name not in versions
-        or versions[package_name] != version
+        current_version is None
+        or current_version != version
         or not (sources / sourceid).exists()
     ):
         print('[-] downloading', sourceid)
@@ -149,8 +148,6 @@ def fetch_source(package_name:str,
                         zf.extract(info, sources / sourceid)
             else:
                 raise RuntimeError(f'unknown python source dist archive format: {filename}')
-
-            versions[package_name] = version
         
         finally:
             shutil.rmtree(download_dir.as_posix())
@@ -200,6 +197,70 @@ def find_packages(path: Path, package_name: str) -> List[Path]:
                 packages.append(subpath)
     return packages
 
+def run_pydoctor(package_name:str, 
+                    version: str, 
+                    sources: Path, 
+                    dist: Path, 
+                    args: List[str]) -> None:
+    sourceid = f'{package_name}-{version}'
+    
+    if not (sources / sourceid).exists():
+        print(f'[!] missing source code for {sourceid}')
+        return
+    
+    out_dir = dist / package_name / version
+    if out_dir.exists():
+        # Already built docs
+        # TODO: Check if version of pydoctor that built the docs is an older version, 
+        #   rebuilds the docs to use latest pydoctor.
+        #   Look for tag <meta name="generator" content="pydoctor 22.2.0">  in the index.html
+        #   We should de a bit of refactoring before that.
+        return
+
+    package_paths = list(find_packages(sources / sourceid, package_name))
+
+    if len(package_paths) == 0:
+        print(
+            '[!] failed to determine package directory for', sources / sourceid
+        )
+        return
+
+    if len(package_paths) > 1:
+        print(
+            f"[!] found multiple packages for {package_name} ({package_paths}), we're just using the first one"
+        )
+
+    out_dir.mkdir(parents=True)
+
+    # preparing the pydoctor templates
+    pydoctor_templates_dir = Path(tempfile.mkdtemp(prefix='pydocbrowser-'))
+    with (pydoctor_templates_dir / 'extra.css').open('w') as fob:
+        fob.write(EXTRA_CSS)
+    with (pydoctor_templates_dir / 'header.html').open('w') as fob:
+        fob.write(HEADER_HTML.replace("<!-- sourceid -->", f"> {sourceid}"))
+        
+    # generating args
+    _args = args + [
+                f'--html-output={out_dir}',
+                f'--template-dir={pydoctor_templates_dir}', 
+                f'--project-base-dir={sources/sourceid}',
+                f'--html-viewsource-base=https://github.com/pydocbrowser/pydocbrowser.github.io/tree/main/build/sources/{sourceid}/',
+                '--intersphinx=https://docs.python.org/3/objects.inv', 
+                '--quiet', 
+                str(package_paths[0]),
+            ]
+    
+    print(f"[-] running 'pydoctor [...] {package_paths[0]}'")
+    
+    _f = io.StringIO()
+    with contextlib.redirect_stdout(_f):
+        pydoctor.driver.main(_args)
+    
+    shutil.rmtree(pydoctor_templates_dir.as_posix())
+
+    _pydoctor_output = _f.getvalue()
+    print(f'[-] {sourceid}: {len(_pydoctor_output.splitlines())} warnings')
+
 def main(args: Sequence[str] = sys.argv[1:]) -> int:
     _exit_code = 0
 
@@ -226,8 +287,12 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
         packages = toml.load(f)
 
     for package_name in packages:
+        pkg_info = fetch_source(package_name, 
+                                versions.get(package_name), 
+                                sources)
+        package_infos[package_name] = pkg_info
 
-        package_infos[package_name] = fetch_source(package_name, versions, sources)
+        versions[package_name] = pkg_info['info']['version']
 
     with (options.build_dir/VERSIONS).open('w') as f:
         json.dump(versions, f)
@@ -240,65 +305,12 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
     intersphinx_args = list(generate_intersphinx_args(packages))
 
     for i, package_name in enumerate(packages):
-        version = versions[package_name]
-        sourceid = f'{package_name}-{version}'
         
-        if not (sources / sourceid).exists():
-            print(f'[!] missing source code for {sourceid}')
-            continue
-        
-        out_dir = dist / package_name / version
-        if out_dir.exists():
-            # Already built docs
-            # TODO: Check if version of pydoctor that built the docs is an older version, 
-            #   rebuilds the docs to use latest pydoctor.
-            #   Look for tag <meta name="generator" content="pydoctor 22.2.0">  in the index.html
-            #   We should de a bit of refactoring before that.
-            continue
-
-        package_paths = list(find_packages(sources / sourceid, package_name))
-
-        if len(package_paths) == 0:
-            print(
-                '[!] failed to determine package directory for', sources / sourceid
-            )
-            continue
-
-        if len(package_paths) > 1:
-            print(
-                f"[!] found multiple packages for {package_name} ({package_paths}), we're just using the first one"
-            )
-
-        out_dir.mkdir(parents=True)
-
-        # preparing the pydoctor templates
-        pydoctor_templates_dir = Path(tempfile.mkdtemp(prefix='pydocbrowser-'))
-        with (pydoctor_templates_dir / 'extra.css').open('w') as fob:
-            fob.write(EXTRA_CSS)
-        with (pydoctor_templates_dir / 'header.html').open('w') as fob:
-            fob.write(HEADER_HTML.replace("<!-- sourceid -->", f"> {sourceid}"))
-         
-        # generating args
-        _args = packages[package_name].get('pydoctor_args', []) + intersphinx_args + [
-                    f'--html-output={out_dir}',
-                    f'--template-dir={pydoctor_templates_dir}', 
-                    f'--project-base-dir={sources/sourceid}',
-                    f'--html-viewsource-base=https://github.com/pydocbrowser/pydocbrowser.github.io/tree/main/build/sources/{sourceid}/',
-                    '--intersphinx=https://docs.python.org/3/objects.inv', 
-                    '--quiet', 
-                    str(package_paths[0]),
-                ]
-        
-        print(f"[-] running 'pydoctor {' '.join(a for a in _args if '--intersphinx' not in a)}'")
-        
-        _f = io.StringIO()
-        with contextlib.redirect_stdout(_f):
-            pydoctor.driver.main(_args)
-        
-        shutil.rmtree(pydoctor_templates_dir.as_posix())
-
-        _pydoctor_output = _f.getvalue()
-        print(f'[-] {sourceid}: {len(_pydoctor_output.splitlines())} warnings')
+        run_pydoctor(package_name, 
+            versions[package_name], 
+            sources=sources, 
+            dist=dist, 
+            args=intersphinx_args + packages[package_name].get('pydoctor_args', []))
 
         if _build_start_time+_build_timeout < datetime.datetime.now() and i < len(packages)-1:
             print('[!] could not finish building all docs within the required time')
