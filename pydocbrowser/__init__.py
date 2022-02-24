@@ -228,7 +228,18 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
     for i, package_name in enumerate(packages):
         version = versions[package_name]
         sourceid = f'{package_name}-{version}'
+        
         if not (sources / sourceid).exists():
+            print(f'[!] missing source code for {sourceid}')
+            continue
+        
+        out_dir = dist / package_name / version
+        if out_dir.exists():
+            # Already built docs
+            # TODO: Check if version of pydoctor that built the docs is an older version, 
+            #   rebuilds the docs to use latest pydoctor.
+            #   Look for tag <meta name="generator" content="pydoctor 22.2.0">  in the index.html
+            #   We should de a bit of refactoring before that.
             continue
 
         package_paths = list(find_packages(sources / sourceid, package_name))
@@ -243,11 +254,6 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
             print(
                 f"[!] found multiple packages for {package_name} ({package_paths}), we're just using the first one"
             )
-
-        out_dir = dist / package_name / version
-
-        if out_dir.exists():
-            continue
 
         out_dir.mkdir(parents=True)
 
@@ -308,7 +314,7 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
         loader=jinja2.PackageLoader("pydocbrowser"), autoescape=True)
 
     readme_html = mistletoe.markdown(
-        Path(README).read_text()
+        options.readme_file.read_text()
     )
 
     sep = '<!-- package list -->'
