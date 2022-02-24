@@ -259,7 +259,9 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
             fob.write(HEADER_HTML.replace("<!-- sourceid -->", f"> {sourceid}"))
          
         # generating args
-        _args = packages[package_name].get('pydoctor_args', []) + intersphinx_args + [
+        _intersphinx_args = list(intersphinx_args)
+        _intersphinx_args.remove(INTERSPHINX_URL_TEMPLATE%package_name)
+        _args = packages[package_name].get('pydoctor_args', []) + _intersphinx_args + [
                     f'--html-output={out_dir}',
                     f'--template-dir={pydoctor_templates_dir}', 
                     f'--project-base-dir={sources/sourceid}',
