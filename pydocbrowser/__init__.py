@@ -225,7 +225,7 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
     dist.mkdir(exist_ok=True)
     intersphinx_args = list(generate_intersphinx_args(packages))
 
-    for package_name in list(packages):
+    for i, package_name in enumerate(packages):
         version = versions[package_name]
         sourceid = f'{package_name}-{version}'
         if not (sources / sourceid).exists():
@@ -280,7 +280,7 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
         _pydoctor_output = _f.getvalue()
         print(f'[-] {sourceid}: {len(_pydoctor_output.splitlines())} warnings')
 
-        if _build_start_time+_build_timeout < datetime.datetime.now():
+        if _build_start_time+_build_timeout < datetime.datetime.now() and i < len(packages)-1:
             print('[!] could not finish building all docs within the required time')
             _exit_code = 21
             break
