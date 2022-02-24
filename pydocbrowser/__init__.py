@@ -84,6 +84,79 @@ def fetch_package_info(package_name: str) -> Dict[str, Any]:
     return cast('Dict[str, Any]', requests.get(f'https://pypi.org/pypi/{package_name}/json',
         headers={'User-Agent': 'pydocbrowser/pydocbrowser'}).json())
 
+def fetch_source(package_name:str, 
+                 versions: Dict[str, str], 
+                 sources: Path) -> Dict[str, Any]:
+    """
+    Download a package sources if we don't already have them on disk.
+    Set the new version in the versions dict when downloading a new package.
+
+    Returns the package infos as returned by fetch_package_info.
+    """
+    package_info = fetch_package_info(package_name)
+    version = package_info['info']['version']
+
+    sourceid = f'{package_name}-{version}'
+
+    if (
+        package_name not in versions
+        or versions[package_name] != version
+        or not (sources / sourceid).exists()
+    ):
+        print('[-] downloading', sourceid)
+
+        source_packages = [
+            p for p in package_info['releases'][version] if p['packagetype'] == 'sdist'
+        ]
+        assert len(source_packages) > 0
+
+        if len(source_packages) > 1:
+            print(
+                f"[!] {package_name} returned multiple source distributions, we're just using the first one"
+            )
+
+        source_package = source_packages[0]
+
+        filename = source_package['filename']
+        assert '/' not in filename  # for security
+
+        download_dir = Path(tempfile.mkdtemp(prefix='pydocbrowser-'))
+        try:
+            archive_path = download_dir / filename
+
+            with requests.get(source_package['url'], stream=True) as r: 
+                with open(archive_path, 'wb') as f: #type:ignore[assignment]
+                    shutil.copyfileobj(r.raw, f)
+
+            if filename.endswith('.tar.gz'):
+                tf = tarfile.open(archive_path)
+                for member in tf.getmembers():
+                    # TODO: check that path is secure (doesn't start with /, doesn't contain ..)
+                    if '/' in member.name:
+                        member.name = member.name.split('/', maxsplit=1)[1]
+                    else:
+                        member.name = '.'
+                tf.extractall(sources / sourceid)
+            
+            elif filename.endswith('.zip'):
+                with zipfile.ZipFile(archive_path) as zf:
+                    for info in zf.infolist():
+                        # TODO: check that path is secure (doesn't start with /, doesn't contain ..)
+                        if '/' in info.filename.rstrip('/'):
+                            info.filename = info.filename.split('/', maxsplit=1)[1]
+                        else:
+                            info.filename = './'
+                        zf.extract(info, sources / sourceid)
+            else:
+                raise RuntimeError(f'unknown python source dist archive format: {filename}')
+
+            versions[package_name] = version
+        
+        finally:
+            shutil.rmtree(download_dir.as_posix())
+    
+    return package_info
+
 def find_packages(path: Path, package_name: str) -> List[Path]:
     package_name = package_name.lower()
 
@@ -144,8 +217,6 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
     except FileNotFoundError:
          pass
 
-    download_dir = Path(tempfile.mkdtemp(prefix='pydocbrowser-'))
-
     # 1. fetch sources
 
     print('[+] fetching sources...')
@@ -155,68 +226,11 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
         packages = toml.load(f)
 
     for package_name in packages:
-        package = fetch_package_info(package_name)
-        package_infos[package_name] = package
-        version = package['info']['version']
 
-        sourceid = f'{package_name}-{version}'
-
-        if (
-            package_name not in versions
-            or versions[package_name] != version
-            or not (sources / sourceid).exists()
-        ):
-            print('[-] downloading', sourceid)
-
-            source_packages = [
-                p for p in package['releases'][version] if p['packagetype'] == 'sdist'
-            ]
-            assert len(source_packages) > 0
-
-            if len(source_packages) > 1:
-                print(
-                    f"[!] {package_name} returned multiple source distributions, we're just using the first one"
-                )
-
-            source_package = source_packages[0]
-
-            filename = source_package['filename']
-            assert '/' not in filename  # for security
-
-            archive_path = download_dir / filename
-
-            with requests.get(source_package['url'], stream=True) as r: 
-                with open(archive_path, 'wb') as f: #type:ignore[assignment]
-                    shutil.copyfileobj(r.raw, f)
-
-            if filename.endswith('.tar.gz'):
-                tf = tarfile.open(archive_path)
-                for member in tf.getmembers():
-                    # TODO: check that path is secure (doesn't start with /, doesn't contain ..)
-                    if '/' in member.name:
-                        member.name = member.name.split('/', maxsplit=1)[1]
-                    else:
-                        member.name = '.'
-                tf.extractall(sources / sourceid)
-            
-            elif filename.endswith('.zip'):
-                with zipfile.ZipFile(archive_path) as zf:
-                    for info in zf.infolist():
-                        # TODO: check that path is secure (doesn't start with /, doesn't contain ..)
-                        if '/' in info.filename.rstrip('/'):
-                            info.filename = info.filename.split('/', maxsplit=1)[1]
-                        else:
-                            info.filename = './'
-                        zf.extract(info, sources / sourceid)
-            else:
-                raise RuntimeError(f'unknown python source dist archive format: {filename}')
-
-            versions[package_name] = version
+        package_infos[package_name] = fetch_source(package_name, versions, sources)
 
     with (options.build_dir/VERSIONS).open('w') as f:
         json.dump(versions, f)
-
-    shutil.rmtree(download_dir)
 
     # 2. generate docs with pydoctor
 
@@ -265,9 +279,7 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
             fob.write(HEADER_HTML.replace("<!-- sourceid -->", f"> {sourceid}"))
          
         # generating args
-        _intersphinx_args = list(intersphinx_args)
-        _intersphinx_args.remove(INTERSPHINX_URL_TEMPLATE%package_name)
-        _args = packages[package_name].get('pydoctor_args', []) + _intersphinx_args + [
+        _args = packages[package_name].get('pydoctor_args', []) + intersphinx_args + [
                     f'--html-output={out_dir}',
                     f'--template-dir={pydoctor_templates_dir}', 
                     f'--project-base-dir={sources/sourceid}',
