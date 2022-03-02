@@ -33,6 +33,8 @@ pydoctor_args = ["--docformat=epytext", ]
 
 [ldaptor]
 
+[lunr]
+
 [lxml]
 
 [mako]
