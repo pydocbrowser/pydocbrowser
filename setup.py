@@ -14,7 +14,7 @@ setup(
     install_requires    =   [
         "Jinja2", 
         "mistletoe", 
-        "pydoctor @ git+https://github.com/twisted/pydoctor@c4b9841043330fd07ac4c24dd7598a70c291e83d#egg=pydoctor", # With search bar
+        "pydoctor @ git+https://github.com/twisted/pydoctor@3f1501c90ae05a30917fe9dba0cf4e09e98d8780#egg=pydoctor", # With search bar
         "requests", 
         "toml", 
         "importlib_resources"
