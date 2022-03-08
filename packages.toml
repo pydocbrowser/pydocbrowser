@@ -10,8 +10,6 @@
 
 [bottle]
 
-[bs4]
-
 [click]
 
 [django]
