@@ -68,6 +68,8 @@ pydoctor_args = ["--docformat=epytext", ]
 
 [sqlalchemy]
 
+[toml]
+
 [treq]
 
 [twisted]
