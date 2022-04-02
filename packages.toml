@@ -62,7 +62,7 @@ pydoctor_args = ["--docformat=epytext", ]
 
 [scrapy]
 
-[selenium]
+;[selenium]
 
 [setuptools]
 
