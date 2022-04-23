@@ -314,12 +314,13 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
     if options.config_file:
         with options.config_file.open() as f:
             packages = toml.load(f)
-        for pack in packages:
-            if 'pydoctor_args' not in pack:
-                pack['pydoctor_args'] = []
-            # Use plaintext docformat by default
-            if not any ('--docformat' in arg for arg in pack['pydoctor_args']):
-                pack['pydoctor_args'].append('--docformat=plaintext')
+        for pack in packages.values():
+            if isinstance(pack, dict):
+                if 'pydoctor_args' not in pack:
+                    pack['pydoctor_args'] = []
+                # Use plaintext docformat by default
+                if not any ('--docformat' in arg for arg in pack['pydoctor_args']):
+                    pack['pydoctor_args'].append('--docformat=plaintext')
     else:
         assert options.packages is not None
         packages = { p:{ 'pydoctor_args':
