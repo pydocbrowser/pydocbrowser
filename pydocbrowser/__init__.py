@@ -35,6 +35,7 @@ import toml
 
 README = 'README.md'
 PACKAGES = 'packages.toml'
+PACKAGES_DEFAULT = object()
 
 BUILD = 'build'
 SOURCES = 'sources'
@@ -52,11 +53,11 @@ HEADER_HTML = (importlib_resources.files('pydocbrowser') /
 
 def get_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-                            description="pydocbrower builder cli", 
+                            description="pydocbrowser builder cli", 
                             formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('--config-file', metavar="PATH", dest='config_file',
-                        help="Main configuration file.", 
-                        type=Path, default=PACKAGES)
+                        help="Main configuration file. Ignored if option --package is passed.", 
+                        type=Path, default=PACKAGES_DEFAULT)
     parser.add_argument('--readme-file', metavar="PATH", dest='readme_file',
                         help="Readme file.", 
                         type=Path, default=README)
@@ -66,13 +67,20 @@ def get_parser() -> argparse.ArgumentParser:
     parser.add_argument('--build-timeout', metavar="MINUTES", dest='build_timeout',
                         help="Build timeout, in minutes.", 
                         type=int, default=BUILD_TIMEOUT)
+    parser.add_argument('--package', metavar="PACKAGE", 
+                        help="Builds the selected package from PyPI, can repeat to build multiple packages. "
+                                "Using this option makes the builder ignore the config file. "
+                                "This option is designed to test pydoctor's builder, "
+                                "so it uses the plaintext markup for focus on AST warnings. ", 
+                        action='append', default=None, dest='packages')
     return parser
 
 class Options(argparse.Namespace):
-    config_file: Path
+    config_file: Optional[Path]
     readme_file: Path
     build_dir: Path
     build_timeout: int
+    packages: Optional[List[str]]
 
 INTERSPHINX_URL_TEMPLATE = "https://pydocbrowser.github.io/%s/latest/objects.inv"
 
@@ -172,7 +180,7 @@ def find_packages(path: Path, package_name: str) -> List[Path]:
                 if (path / package_dir / package_name / '__init__.py').exists():
                     return [path / package_dir / package_name]
             else:
-                print("[+] options.package_dir in setup.cfg doesn't start with =")
+                print(f"[!] options.package_dir in {package_name}'s setup.cfg doesn't start with =")
 
     # TODO: Parse the AST of setup.py and extract packages list
 
@@ -201,12 +209,14 @@ def run_pydoctor(package_name:str,
                     version: str, 
                     sources: Path, 
                     dist: Path, 
-                    args: List[str]) -> None:
+                    args: List[str],
+                    verbose: bool=False) -> int:
+
     sourceid = f'{package_name}-{version}'
     
     if not (sources / sourceid).exists():
         print(f'[!] missing source code for {sourceid}')
-        return
+        return -1
     
     out_dir = dist / package_name / version
     if out_dir.exists():
@@ -215,7 +225,8 @@ def run_pydoctor(package_name:str,
         #   rebuilds the docs to use latest pydoctor.
         #   Look for tag <meta name="generator" content="pydoctor 22.2.0">  in the index.html
         #   We should de a bit of refactoring before that.
-        return
+        print(f'[-] already built docs for {sourceid}')
+        return 0
 
     package_paths = list(find_packages(sources / sourceid, package_name))
 
@@ -223,7 +234,7 @@ def run_pydoctor(package_name:str,
         print(
             '[!] failed to determine package directory for', sources / sourceid
         )
-        return
+        return -1
 
     if len(package_paths) > 1:
         print(
@@ -253,18 +264,34 @@ def run_pydoctor(package_name:str,
     print(f"[-] running 'pydoctor [...] {package_paths[0]}'")
     
     _f = io.StringIO()
+
+    code:int = -1
     with contextlib.redirect_stdout(_f):
-        pydoctor.driver.main(_args)
+        code = pydoctor.driver.main(_args)
     
     shutil.rmtree(pydoctor_templates_dir.as_posix())
 
     _pydoctor_output = _f.getvalue()
-    print(f'[-] {sourceid}: {len(_pydoctor_output.splitlines())} warnings')
+    nb_warnings = len(_pydoctor_output.splitlines())
+    print(f'[-] {sourceid}: {nb_warnings} warnings')
+    if verbose and nb_warnings>0:
+        print(_pydoctor_output)
+    return code
+
+def post_process_options(options: Options) -> None:
+    if options.packages:
+        if options.config_file != PACKAGES_DEFAULT:
+            print("[!] config file ignored because option --package is used.")
+        options.config_file = None
+    elif options.config_file == PACKAGES_DEFAULT:
+        options.config_file = Path(PACKAGES)
 
 def main(args: Sequence[str] = sys.argv[1:]) -> int:
     _exit_code = 0
 
     options = cast(Options, get_parser().parse_args(args))
+    post_process_options(options)
+
     _build_start_time = datetime.datetime.now()
     _build_timeout = datetime.timedelta(minutes=options.build_timeout)
 
@@ -282,9 +309,25 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
 
     print('[+] fetching sources...')
     package_infos = {}
-
-    with options.config_file.open() as f:
-        packages = toml.load(f)
+    
+    # Figure the packages list we want to build the documentation for
+    if options.config_file:
+        with options.config_file.open() as f:
+            packages = toml.load(f)
+        for pack in packages:
+            if 'pydoctor_args' not in pack:
+                pack['pydoctor_args'] = []
+            # Use plaintext docformat by default
+            if not any ('--docformat' in arg for arg in pack['pydoctor_args']):
+                pack['pydoctor_args'].append('--docformat=plaintext')
+    else:
+        assert options.packages is not None
+        packages = { p:{ 'pydoctor_args':
+            [
+                '--docformat=plaintext', 
+                '--no-sidebar' # for performances
+            ]
+        } for p in options.packages }
 
     for package_name in packages:
         pkg_info = fetch_source(package_name, 
@@ -304,18 +347,24 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
     dist.mkdir(exist_ok=True)
     intersphinx_args = list(generate_intersphinx_args(packages))
 
+    _is_verbose = options.packages is not None
+
     for i, package_name in enumerate(packages):
         
-        run_pydoctor(package_name, 
+        _pydoctor_exit_code = run_pydoctor(package_name, 
             versions[package_name], 
             sources=sources, 
             dist=dist, 
-            args=intersphinx_args + packages[package_name].get('pydoctor_args', []))
+            args=intersphinx_args + packages[package_name]['pydoctor_args'], 
+            verbose=_is_verbose)
 
         if _build_start_time+_build_timeout < datetime.datetime.now() and i < len(packages)-1:
             print('[!] could not finish building all docs within the required time')
             _exit_code = 21
             break
+        
+        if _is_verbose and _pydoctor_exit_code!=0:
+            _exit_code = 24
 
     # 3. create latest symlinks, for packages that we actually created docs for.
     for package_name, version in versions.items():
