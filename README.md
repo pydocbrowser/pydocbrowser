@@ -35,7 +35,7 @@ Quickly generate the docs for the ``requests`` module, use:
 python3 -m pydocbrowser --package requests
 ```
 
-It will create a folder ``build`` and place all HTML file inside ``build/www``. Create a ``packages.toml`` file to configure pydoctor options.
+It will create a folder ``build`` and place all HTML files inside ``build/www``. Create a ``packages.toml`` file to configure pydoctor options.
 
 ## How to contribute
 
