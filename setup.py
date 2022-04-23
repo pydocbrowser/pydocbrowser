@@ -4,7 +4,7 @@ from setuptools import setup
 setup(
     name                =   "pydocbrowser",
     version             =   '0.0',
-    description         =   "Consistent API docs for Python with pydoctor",
+    description         =   "Popular Python libraries API doc with pydoctor",
     author              =   "Martin Fischer",
     maintainer          =   "Tristan Landes",
     packages            =   ['pydocbrowser',],
@@ -14,7 +14,7 @@ setup(
     install_requires    =   [
         "Jinja2", 
         "mistletoe", 
-        "pydoctor @ git+https://github.com/twisted/pydoctor@master#egg=pydoctor", # With search bar
+        "pydoctor @ git+https://github.com/twisted/pydoctor@master#egg=pydoctor", # Latest pydoctor
         "requests", 
         "toml", 
         "importlib_resources"
