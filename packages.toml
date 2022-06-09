@@ -16,6 +16,8 @@
 
 [django]
 
+[djangorestframework]
+
 [docspec]
 
 [docutils]
