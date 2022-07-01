@@ -4,6 +4,7 @@ to try to reduce the size of the website because Github Pages only allows 1Gb.
 """
 from pathlib import Path
 import shutil
+import os
 
 if __name__ == '__main__':
 
@@ -26,8 +27,14 @@ if __name__ == '__main__':
         assert latest.is_dir()
         # Deletes everything except latest directory
         for subfolder in entry.iterdir():
+            if not subfolder.is_dir():
+                continue
             if subfolder.name == 'latest':
                 continue
             remove = subfolder.as_posix()
-            print(f'Removing {remove!r}')
-            shutil.rmtree(remove)
+            print(f'Removing files in {remove!r} (except objects.inv)')
+            for _f in subfolder.iterdir():
+                if _f.is_dir():
+                    shutil.rmtree(_f.as_posix())
+                elif _f.name != 'objects.inv':
+                    os.remove(_f.as_posix())
