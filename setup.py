@@ -14,7 +14,7 @@ setup(
     install_requires    =   [
         "Jinja2", 
         "mistletoe", 
-        "pydoctor>=22.5.1", # pydoctor stable
+        "pydoctor", # pydoctor stable
         "requests", 
         "toml", 
         "importlib_resources"
