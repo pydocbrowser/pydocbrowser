@@ -350,7 +350,10 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
     print('[+] generating docs...')
     dist = options.build_dir / WWW
     dist.mkdir(exist_ok=True)
-    intersphinx_args = list(generate_intersphinx_args(packages))
+    if options.packages is not None:
+        intersphinx_args = []
+    else:
+        intersphinx_args = list(generate_intersphinx_args(packages))
 
     _is_verbose = options.packages is not None or options.verbose
 
