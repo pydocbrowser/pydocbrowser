@@ -6,6 +6,7 @@ import shutil
 import sys
 import contextlib
 import io
+import os
 import tarfile
 import tempfile
 import zipfile
@@ -73,6 +74,8 @@ def get_parser() -> argparse.ArgumentParser:
                                 "This option is designed to test pydoctor's builder, "
                                 "so it uses the plaintext markup for focus on AST warnings. ", 
                         action='append', default=None, dest='packages')
+    parser.add_argument('--verbose', action='store_true', dest='verbose',
+                        help="Print pydoctor output", default=False)
     return parser
 
 class Options(argparse.Namespace):
@@ -81,6 +84,7 @@ class Options(argparse.Namespace):
     build_dir: Path
     build_timeout: int
     packages: Optional[List[str]]
+    verbose: bool
 
 INTERSPHINX_URL_TEMPLATE = "https://pydocbrowser.github.io/%s/latest/objects.inv"
 
@@ -348,7 +352,7 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
     dist.mkdir(exist_ok=True)
     intersphinx_args = list(generate_intersphinx_args(packages))
 
-    _is_verbose = options.packages is not None
+    _is_verbose = options.packages is not None or options.verbose
 
     for i, package_name in enumerate(packages):
         
