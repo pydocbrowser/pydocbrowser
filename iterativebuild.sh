@@ -5,7 +5,8 @@
 
 set +e
 # For testing, it will create many jobs, a values more like 200 should be set for production
-python -m pydocbrowser
+python3 ./gh-latest-only.py
+python3 -m pydocbrowser
 exit_code=$?
 # Exit code 21 means it stopped generating docs because of the build timeout
 if [[ $exit_code -eq 21 ]]; then
