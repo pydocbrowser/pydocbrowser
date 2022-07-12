@@ -378,7 +378,7 @@ def main(args: Sequence[str] = sys.argv[1:]) -> int:
     for package_name, version in versions.items():
         if package_name not in packages:
             continue
-        if not (dist / package_name / version / 'index.html').exists():
+        if not (dist / package_name / version / 'objects.inv').exists():
             if _exit_code!=21:
                 print(f'[!] looks like pydoctor build failed for {package_name}-{version}')
             continue
