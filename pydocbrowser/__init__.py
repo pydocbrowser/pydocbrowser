@@ -207,6 +207,10 @@ def find_packages(path: Path, package_name: str) -> List[Path]:
         if subpath.is_dir():
             if (subpath / '__init__.py').exists():
                 packages.append(subpath)
+    
+    # Filter 'test' and 'tests' packages
+    packages = [p for p in packages if p.name not in ['test', 'tests']]
+    
     return packages
 
 def run_pydoctor(package_name:str, 
