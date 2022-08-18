@@ -68,6 +68,8 @@ pydoctor_args = ["--docformat=epytext", ]
 
 [python-dateutil]
 
+[pytype]
+
 [requests]
 
 [scrapy]
