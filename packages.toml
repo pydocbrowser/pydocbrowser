@@ -38,6 +38,8 @@
 
 [jinja2]
 
+[klara]
+
 [klein]
 pydoctor_args = ["--docformat=epytext", ]
 
