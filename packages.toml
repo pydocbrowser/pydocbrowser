@@ -61,6 +61,8 @@ pydoctor_args = ["--docformat=google", ]
 [numpy]
 pydoctor_args = ["--docformat=numpy", ]
 
+[py2cfg]
+
 [pydoctor]
 pydoctor_args = ["--docformat=epytext", ]
 
