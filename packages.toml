@@ -32,6 +32,8 @@
 
 [httpx]
 
+[inspect4py]
+
 [invoke]
 
 [jira]
