@@ -95,6 +95,8 @@ pydoctor_args = ["--docformat=epytext", ]
 [twisted]
 pydoctor_args = ["--docformat=epytext", ]
 
+[typeshed_client]
+
 [urllib3]
 
 [werkzeug]
