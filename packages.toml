@@ -90,6 +90,8 @@ pydoctor_args = ["--docformat=epytext", ]
 
 [sqlalchemy]
 
+[shodan]
+
 [toml]
 
 [treq]
