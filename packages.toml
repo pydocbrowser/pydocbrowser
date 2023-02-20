@@ -46,6 +46,9 @@
 
 [jinja2]
 
+[kedro]
+pydoctor_args = ["--docformat=google", ]
+
 [klara]
 
 [klein]
