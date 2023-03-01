@@ -56,8 +56,6 @@ pydoctor_args = ["--docformat=epytext", ]
 
 [ldaptor]
 
-[libnmap]
-
 [lunr]
 
 [lxml]
@@ -84,6 +82,8 @@ pydoctor_args = ["--docformat=epytext", ]
 [pylint]
 
 [python-dateutil]
+
+[python-libnmap]
 
 [python-graphs]
 pydoctor_args = ["--docformat=google", ]
