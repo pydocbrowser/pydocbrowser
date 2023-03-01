@@ -56,6 +56,8 @@ pydoctor_args = ["--docformat=epytext", ]
 
 [ldaptor]
 
+[libnmap]
+
 [lunr]
 
 [lxml]
