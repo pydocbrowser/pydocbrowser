@@ -83,6 +83,9 @@ pydoctor_args = ["--docformat=epytext", ]
 
 [python-dateutil]
 
+[python-graphs]
+pydoctor_args = ["--docformat=google", ]
+
 [pytype]
 
 [requests]
